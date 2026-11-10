@@ -1,5 +1,5 @@
 {
-  "_comment": "Edit freely. tiers: model roster per difficulty. usage_overrides: % LEFT this week for providers whose usage can't be read live (cursor, antigravity); remove or update as it changes. Read by scripts/route.py.",
+  "_comment": "Model roster and advisory routing estimates, not availability or measured cost. usage_overrides: weekly percent LEFT; remove/update stale values. Overrides preserve known session limits. Validate models/options against host capabilities. Read by scripts/route.py.",
   "tiers": {
     "easy": [
       { "model": "gemini-3.8-flash", "provider": "antigravity", "options": { "thinking_level": "high" } },

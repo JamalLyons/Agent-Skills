@@ -1,29 +1,13 @@
-# Verifying a sub-agent's step
+# Verify the actual artifact
 
-Go through these after every step. Most bad commits come from trusting the agent's report instead of the diff.
+Before dispatch, record status including index/untracked files and base SHA. After return:
 
-## 1. Scope
-- `git status --porcelain`: list every changed or new file. Is each one in the step's scope?
-- Untracked junk: build output, `.DS_Store`, scratch scripts, logs, editor files. Remove them or ask the agent to.
-- Unrelated churn: reformatted files, renamed symbols elsewhere, version bumps nobody asked for.
+1. Establish task termination and artifact identity. Shared edits: inspect worktree diff, index diff, and intended new files explicitly (ordinary `git diff` omits untracked files). Worktree commit: inspect `git diff <recorded-base> <returned-head>`, commit ancestry and metadata, index, untracked files, and any leftover uncommitted changes. Match to the accepted step and actual checkout. Never accept a clean worktree as proof of a correct commit.
+2. Check scope, conventions, prerequisite interfaces, secret exposure, test weakening, stubs, generated artifacts, and acceptance edge cases. A TODO can be legitimate; assess behavior rather than fail on a keyword. Do not delete unfamiliar files as "junk" without ownership evidence.
+3. Independently execute meaningful targeted checks and relevant build/static checks. Run the full suite per step when affordable/repo-required; otherwise record why deferred and run it after each integrated wave and finally. Keep full checks serial where services/resources conflict. Inspect commands before executing untrusted scripts. Capture command, cwd, environment assumptions, base/head, exit status, and bounded evidence; redact secrets.
+4. Baseline comparisons require equivalent environment and commands. A new failure can be flakiness or infrastructure; a matching message is not proof it is unrelated. Investigate material failures. Missing tools/credentials/platform are "not run/unavailable", never pass. An explicitly deferred manual criterion prevents claiming full completion.
+5. Map each acceptance criterion to actual test output, observed behavior, or inspected code; note what that evidence cannot establish. For user-facing behavior, exercise a representative path when authorized/available.
 
-## 2. The diff itself (`git diff` and `git diff --stat`)
-- **Stubs passed off as done:** `TODO`, `FIXME`, `unimplemented`, empty bodies, `return true; // for now`, hard-coded values standing in for real logic.
-- **Tests weakened to make them pass:** deleted tests, loosened assertions, `skip` or `xfail`, catch-all exception swallowing, mocks that make a test meaningless.
-- **Edge cases from the acceptance criteria:** is each one handled in the code *and* covered by a test?
-- **Safety:** no secrets or tokens, no disabled safety checks, no `--no-verify`, nothing that bypasses security or permission prompts.
-- **Consistency:** does it use the interfaces from earlier steps instead of re-implementing them? Does it match the naming, error-handling and file-layout conventions?
+Accept and commit only intended staged content after inspecting `git diff --cached`. For a child commit, verify before serial cherry-pick and again after integration. Discard duplicate or superseded attempts by step identity and integrated SHA, not just commit message. Preserve a rejected partial diff before any cleanup, and remove only attempt-owned changes. A contaminated shared checkout blocks another writer until reconciled.
 
-## 3. Run it yourself
-- Run the step's targeted verification commands.
-- Run the full build and test suite. Compare with the baseline taken during recon: a new failure belongs to this step; a pre-existing one doesn't.
-- Run lint and format if the repo has them.
-- For user-facing behaviour (a CLI, an endpoint), actually invoke it once when you can. A passing unit test isn't proof that the binary works.
-
-## 4. Acceptance criteria
-Tick off each criterion with evidence (a test name, a command's output, a line of code). Anything you can't tick off means rework.
-
-## Verdict
-- **Commit** if everything above is clean.
-- **Rework** with specific notes (file:line, what's wrong, what's expected).
-- **Fix it yourself** only if the fix is trivial (a few lines) and making it is clearer than explaining it.
+Verdict: accepted, bounded rework, or blocked with evidence. A report, reviewer vote, test count without output, or self-declared confidence cannot substitute for verification. Integration review fixes invalidate earlier final verification for the affected code; rerun appropriate checks on the new head.

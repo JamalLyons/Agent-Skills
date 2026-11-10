@@ -1,210 +1,248 @@
 #!/usr/bin/env python3
-"""Read live subscription usage per provider and suggest a model for each planned step.
+"""Advisory routing from bounded local cache reads; never dispatches or contacts providers."""
+import argparse
+import glob
+import json
+import math
+import os
+import time
+from datetime import datetime
+from pathlib import Path
 
-Usage:
-  python3 route.py                          # usage snapshot only
-  python3 route.py --steps hard,easy,easy,hard,easy
-  python3 route.py --steps ... --set antigravity=30 --set cursor=60   # % LEFT this week
-  python3 route.py --steps ... --avoid claude                          # spare a provider (fallback only)
-  python3 route.py --json ...               # machine-readable
+HERE = Path(__file__).resolve().parent
+MAX_AGE = 3600
+MAX_BYTES = 1024 * 1024
+ALIASES = {'gemini': 'antigravity', 'gpt': 'codex', 'openai': 'codex',
+           'claude': 'claudeAgent', 'anthropic': 'claudeAgent',
+           'grok': 'cursor', 'composer': 'cursor'}
 
-Sources (all read-only, local):
-  claudeAgent  ~/.claude.json -> cachedUsageUtilization (five_hour / seven_day utilization %)
-  codex        newest ~/.codex/sessions/**/*.jsonl event with rate_limits.primary/secondary
-  cursor, antigravity: no local limit data; use --set or config.json usage_overrides, else assumed.
 
-The allocation is a greedy heuristic: each step goes to the tier model whose provider has the
-highest score (weekly % left x bonuses), then that provider's headroom is reduced by the step's
-estimated cost, so the work spreads out. Treat it as a suggestion; the lead can override.
-"""
-import argparse, glob, json, os, sys, time
-from datetime import datetime, timezone
+def percent(v):
+    if isinstance(v, bool):
+        raise ValueError('percent must be numeric')
+    v = float(v)
+    if not math.isfinite(v) or not 0 <= v <= 100:
+        raise ValueError('percent must be finite and between 0 and 100')
+    return v
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-NOW = time.time()
+
+def timestamp(v):
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        n = float(v)
+    else:
+        n = datetime.fromisoformat(str(v).replace('Z', '+00:00')).timestamp()
+    if not math.isfinite(n):
+        raise ValueError('invalid timestamp')
+    return n
 
 
 def load_config():
-    with open(os.path.join(HERE, "..", "config.json")) as f:
-        return json.load(f)
+    cfg = json.loads((HERE.parent / 'config.json').read_text())
+    if set(cfg['tiers']) != {'easy', 'hard'}:
+        raise ValueError('tiers must be easy and hard')
+    for models in cfg['tiers'].values():
+        for m in models:
+            if not isinstance(m['provider'], str) or not isinstance(m['model'], str):
+                raise ValueError('invalid model identity')
+            if not isinstance(m['options'], dict):
+                raise ValueError('model options must be an object')
+    r = cfg['routing']
+    for k in ('min_weekly_left_pct', 'min_session_left_pct', 'assumed_left_pct_when_unknown'):
+        percent(r[k])
+    for tier in ('easy', 'hard'):
+        if percent(r['step_cost_pct'][tier]) <= 0:
+            raise ValueError('step cost must be positive')
+    for k in ('preferred_bonus', 'reset_soon_hours', 'reset_soon_bonus'):
+        if not math.isfinite(float(r[k])) or float(r[k]) <= 0:
+            raise ValueError('routing bonuses/hours must be finite and positive')
+    return cfg
 
 
-def _iso(ts):
-    return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="minutes") if ts else None
-
-
-def _window(used_pct, resets_at):
-    """Return % left, treating an already-passed reset as a fresh window."""
-    if used_pct is None:
+def observation(used, reset, observed, now):
+    # Past resets cannot establish usage in the new window.
+    if observed is None or not 0 <= now - observed <= MAX_AGE:
         return None
-    if resets_at and resets_at < NOW:
-        return 100.0
-    return max(0.0, 100.0 - float(used_pct))
+    if reset is not None and timestamp(reset) <= now:
+        return None
+    return 100 - percent(used) if used is not None else None
 
 
-def claude_usage():
-    p = os.path.expanduser("~/.claude.json")
+def claude_usage(now):
     try:
-        d = json.load(open(p)).get("cachedUsageUtilization") or {}
-        u = d.get("utilization") or {}
-        def parse(key):
-            w = u.get(key) or {}
-            ts = None
-            if w.get("resets_at"):
-                ts = datetime.fromisoformat(w["resets_at"]).timestamp()
-            return _window(w.get("utilization"), ts), ts
-        s_left, s_reset = parse("five_hour")
-        w_left, w_reset = parse("seven_day")
-        if w_left is None and s_left is None:
+        p = Path.home() / '.claude.json'
+        if p.stat().st_size > MAX_BYTES:
             return None
-        return {"weekly_left": w_left, "weekly_resets": w_reset, "session_left": s_left,
-                "session_resets": s_reset, "source": "~/.claude.json",
-                "age_min": round((NOW - d.get("fetchedAtMs", NOW * 1000) / 1000) / 60)}
-    except Exception:
+        d = json.loads(p.read_text()).get('cachedUsageUtilization') or {}
+        observed = timestamp(d['fetchedAtMs'] / 1000)
+        out = {'source': 'local Claude cache', 'age_min': round((now-observed)/60)}
+        for key, window in [('session', 'five_hour'), ('weekly', 'seven_day')]:
+            w = (d.get('utilization') or {}).get(window) or {}
+            out[key+'_left'] = observation(w.get('utilization'), w.get('resets_at'), observed, now)
+            if out[key+'_left'] is not None and w.get('resets_at'):
+                out[key+'_resets'] = timestamp(w['resets_at'])
+        return out
+    except (OSError, ValueError, KeyError, TypeError, OverflowError):
         return None
 
 
-def codex_usage():
-    files = sorted(glob.glob(os.path.expanduser("~/.codex/sessions/**/*.jsonl"), recursive=True),
-                   key=os.path.getmtime, reverse=True)[:25]
-    for f in files:
-        best = None
+def codex_usage(now):
+    candidates = []
+    # Bounded tail read per file; glob still enumerates matching paths.
+    files = glob.glob(str(Path.home() / '.codex/sessions/**/*.jsonl'), recursive=True)
+    def mtime(p):
         try:
-            with open(f, errors="ignore") as fh:
-                for line in fh:
-                    if '"rate_limits"' not in line or '"used_percent"' not in line:
+            return os.path.getmtime(p)
+        except OSError:
+            return 0
+    for p in sorted(files, key=mtime, reverse=True)[:25]:
+        try:
+            with open(p, 'rb') as f:
+                f.seek(0, 2)
+                start = max(0, f.tell()-MAX_BYTES)
+                f.seek(start)
+                if start:
+                    f.readline()  # discard partial first line
+                lines = f.read(MAX_BYTES).decode('utf-8', errors='replace').splitlines()
+            for line in lines:
+                try:
+                    event = json.loads(line)
+                    payload = event.get('payload') or {}
+                    if event.get('type') != 'event_msg' or payload.get('type') != 'token_count':
                         continue
-                    try:
-                        o = json.loads(line)
-                    except Exception:
+                    rl = payload.get('rate_limits')
+                    if not isinstance(rl, dict):
                         continue
-                    stack = [o]
-                    while stack:
-                        x = stack.pop()
-                        if isinstance(x, dict):
-                            rl = x.get("rate_limits")
-                            if isinstance(rl, dict) and (rl.get("primary") or rl.get("secondary")):
-                                best = rl
-                            stack.extend(x.values())
-                        elif isinstance(x, list):
-                            stack.extend(x)
+                    observed = timestamp(event['timestamp'])
+                    out = {'source': 'local Codex event', 'age_min': round((now-observed)/60),
+                           'weekly_left': None, 'session_left': None}
+                    for w in (rl.get('primary'), rl.get('secondary')):
+                        if not isinstance(w, dict):
+                            continue
+                        key = {300: 'session', 10080: 'weekly'}.get(w.get('window_minutes'))
+                        if key:
+                            out[key+'_left'] = observation(w.get('used_percent'), w.get('resets_at'), observed, now)
+                            if out[key+'_left'] is not None and w.get('resets_at'):
+                                out[key+'_resets'] = timestamp(w['resets_at'])
+                    if observed <= now:
+                        candidates.append((observed, out))
+                except (ValueError, KeyError, TypeError, AttributeError, OverflowError):
+                    continue
         except OSError:
             continue
-        if best:
-            pr, se = best.get("primary") or {}, best.get("secondary") or {}
-            return {"weekly_left": _window(se.get("used_percent"), se.get("resets_at")),
-                    "weekly_resets": se.get("resets_at"),
-                    "session_left": _window(pr.get("used_percent"), pr.get("resets_at")),
-                    "session_resets": pr.get("resets_at"), "source": "codex session log",
-                    "age_min": round((NOW - os.path.getmtime(f)) / 60)}
-    return None
+    return max(candidates, key=lambda x: x[0])[1] if candidates else None
 
 
-def snapshot(cfg, sets):
-    providers = sorted({m["provider"] for t in cfg["tiers"].values() for m in t})
-    live = {"claudeAgent": claude_usage(), "codex": codex_usage()}
-    overrides = dict(cfg.get("usage_overrides") or {})
+def snapshot(cfg, sets, now=None):
+    now = time.time() if now is None else now
+    providers = {m['provider'] for models in cfg['tiers'].values() for m in models}
+    overrides = dict(cfg.get('usage_overrides') or {})
     overrides.update(sets)
+    unknown = set(overrides) - providers
+    if unknown:
+        raise ValueError('unknown override provider: '+', '.join(sorted(unknown)))
+    live = {'claudeAgent': claude_usage(now), 'codex': codex_usage(now)}
     out = {}
-    for p in providers:
+    for p in sorted(providers):
+        s = dict(live.get(p) or {'weekly_left': None, 'session_left': None, 'source': 'unknown'})
         if p in overrides:
             v = overrides[p]
-            left = v.get("weekly_left_pct") if isinstance(v, dict) else v
-            out[p] = {"weekly_left": float(left), "session_left": None, "source": "user-provided"}
-        elif live.get(p):
-            out[p] = live[p]
-        else:
-            out[p] = {"weekly_left": None, "session_left": None, "source": "unknown"}
+            s['weekly_left'] = percent(v['weekly_left_pct'] if isinstance(v, dict) else v)
+            s['weekly_source'] = 'user-provided weekly override (no freshness guarantee)'
+        out[p] = s
     return out
 
 
-def allocate(cfg, snap, steps, avoid=()):
-    r = cfg["routing"]
-    score, notes = {}, {}
+def allocate(cfg, snap, steps, avoid=(), exclude=(), allowed=None):
+    if any(t not in ('easy', 'hard') for t in steps):
+        raise ValueError('steps must contain only easy or hard')
+    r = cfg['routing']
+    remaining, notes = {}, {}
     for p, s in snap.items():
-        left = s.get("weekly_left")
-        if s.get("age_min") is not None and s["age_min"] > 60:
-            notes[p] = f"reading is {s['age_min']} min old; may be stale (ask the user if it matters)"
-        if left is None:
-            left = r["assumed_left_pct_when_unknown"]
-            notes[p] = f"usage unknown, assumed {left:.0f}% left"
-        if s.get("session_left") is not None and s["session_left"] < r["min_session_left_pct"]:
-            notes[p] = f"5h window nearly used ({s['session_left']:.0f}% left), skipped"
-            left = 0
-        elif left < r["min_weekly_left_pct"]:
-            notes[p] = f"only {left:.0f}% left this week, skipped"
-            left = 0
-        bonus = 1.0
-        reset = s.get("weekly_resets")
-        if left > 0 and reset and reset - NOW < r["reset_soon_hours"] * 3600:
-            bonus = r["reset_soon_bonus"]
-            notes.setdefault(p, f"resets in {(reset - NOW) / 3600:.0f}h: use-it-or-lose-it bonus")
-        if p in avoid and left > 0:
-            bonus *= 0.05  # last resort only
-            notes[p] = "avoided at user request (fallback only)"
-        score[p] = [left, bonus]
+        remaining[p] = {w: percent(s[w+'_left']) if s.get(w+'_left') is not None
+                        else percent(r['assumed_left_pct_when_unknown']) for w in ('weekly', 'session')}
+        notes[p] = []
+        if any(s.get(w+'_left') is None for w in ('weekly', 'session')):
+            notes[p].append('unknown window(s): configured assumption used; not observed quota')
+        if p in exclude:
+            notes[p].append('excluded')
+        elif p in avoid:
+            notes[p].append('spared unless no eligible alternative')
     plan = []
     for i, tier in enumerate(steps, 1):
-        cands = []
-        for m in cfg["tiers"][tier]:
-            left, bonus = score.get(m["provider"], [0, 1])
-            if left <= 0:
+        cost = percent(r['step_cost_pct'][tier])
+        candidates = []
+        for m in cfg['tiers'][tier]:
+            p = m['provider']
+            if p in exclude or (allowed is not None and p+'/'+m['model'] not in allowed):
                 continue
-            s = left * bonus * (r["preferred_bonus"] if m.get("preferred") else 1.0)
-            cands.append((s, m))
-        if not cands:
-            # tier exhausted: fall back to the other tier rather than stalling
-            other = "hard" if tier == "easy" else "easy"
-            cands = [(score[m["provider"]][0], m) for m in cfg["tiers"][other] if score[m["provider"]][0] > 0]
-        if not cands:
-            plan.append({"step": i, "tier": tier, "model": None, "reason": "no provider has headroom"})
+            headroom = remaining[p]
+            if any(headroom[w]-cost < r['min_'+w+'_left_pct'] for w in ('weekly', 'session')):
+                continue
+            score = min(headroom.values()) * (r['preferred_bonus'] if m.get('preferred') else 1)
+            # Reset bonuses only apply to trustworthy future reset metadata if supplied.
+            reset = snap[p].get('weekly_resets')
+            now = time.time()
+            if reset and 0 < timestamp(reset)-now < r['reset_soon_hours']*3600:
+                score *= r['reset_soon_bonus']
+            candidates.append((p not in avoid, score, m))
+        if not candidates:
+            plan.append({'step': i, 'tier': tier, 'model': None,
+                         'reason': 'no eligible model in tier with estimated reserve'})
             continue
-        cands.sort(key=lambda c: c[0], reverse=True)
-        m = cands[0][1]
-        score[m["provider"]][0] = max(0.0, score[m["provider"]][0] - r["step_cost_pct"][tier])
-        plan.append({"step": i, "tier": tier, "model": m["model"], "provider": m["provider"],
-                     "options": m["options"]})
+        candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        m = candidates[0][2]
+        for w in ('weekly', 'session'):
+            remaining[m['provider']][w] -= cost
+        plan.append({'step': i, 'tier': tier, 'model': m['model'], 'provider': m['provider'],
+                     'options': m['options']})
     return plan, notes
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--steps", default="", help="comma list of easy|hard, in plan order")
-    ap.add_argument("--set", action="append", default=[], help="provider=PCT_LEFT_THIS_WEEK")
-    ap.add_argument("--avoid", action="append", default=[], help="provider to spare (fallback only)")
-    ap.add_argument("--json", action="store_true")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--steps', default='')
+    ap.add_argument('--set', action='append', default=[], metavar='PROVIDER=WEEKLY_PERCENT_LEFT')
+    ap.add_argument('--avoid', action='append', default=[])
+    ap.add_argument('--exclude', action='append', default=[])
+    ap.add_argument('--allow-model', action='append', help='repeat capability-approved provider/model')
+    ap.add_argument('--json', action='store_true')
     a = ap.parse_args()
-    cfg = load_config()
-    alias = {"gemini": "antigravity", "gpt": "codex", "openai": "codex", "claude": "claudeAgent",
-             "anthropic": "claudeAgent", "grok": "cursor", "composer": "cursor"}
-    sets = {}
-    for kv in a.set:
-        k, v = kv.split("=", 1)
-        k = alias.get(k.lower(), k)
-        sets[k] = float(v.rstrip("%"))
-    snap = snapshot(cfg, sets)
-    steps = [s.strip().lower() for s in a.steps.split(",") if s.strip()]
-    avoid = {alias.get(x.lower(), x) for x in a.avoid}
-    plan, notes = allocate(cfg, snap, steps, avoid) if steps else ([], {})
+    alias = lambda s: ALIASES.get(s.lower(), s)
+    try:
+        cfg = load_config()
+        providers = {m['provider'] for models in cfg['tiers'].values() for m in models}
+        sets = {}
+        for arg in a.set:
+            k, v = arg.split('=', 1)
+            sets[alias(k)] = percent(v.rstrip('%'))
+        avoid, exclude = {alias(p) for p in a.avoid}, {alias(p) for p in a.exclude}
+        if (avoid | exclude) - providers:
+            raise ValueError('unknown provider in avoid/exclude')
+        steps = a.steps.split(',') if a.steps else []
+        steps = [s.strip().lower() for s in steps]
+        if len(steps) > 1000:
+            raise ValueError('at most 1000 advisory steps per invocation')
+        roster = {m['provider']+'/'+m['model'] for models in cfg['tiers'].values() for m in models}
+        if a.allow_model and set(a.allow_model)-roster:
+            raise ValueError('allow-model is not in configured roster')
+        snap = snapshot(cfg, sets)
+        plan, notes = allocate(cfg, snap, steps, avoid, exclude,
+                               set(a.allow_model) if a.allow_model is not None else None)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as e:
+        ap.error(str(e))
+    result = {'usage': snap, 'notes': notes, 'assignments': plan,
+              'advisory': 'Quota estimates, not cost, availability, or authorization guarantees'}
     if a.json:
-        print(json.dumps({"usage": snap, "notes": notes, "assignments": plan}, indent=2, default=str))
-        return
-    print("Usage (% LEFT)        week    5h      source")
-    for p, s in snap.items():
-        f = lambda v: f"{v:5.0f}%" if v is not None else "    ? "
-        extra = f" ({s['age_min']} min old)" if s.get("age_min") is not None else ""
-        rs = f", week resets {_iso(s['weekly_resets'])}" if s.get("weekly_resets") else ""
-        print(f"  {p:<18} {f(s.get('weekly_left'))}  {f(s.get('session_left'))}   {s['source']}{extra}{rs}")
-    for p, n in notes.items():
-        print(f"  note: {p}: {n}")
-    if plan:
-        print("\nSuggested routing")
-        for x in plan:
-            if x["model"]:
-                print(f"  step {x['step']:>2} [{x['tier']}] -> {x['model']} ({x['provider']}) {json.dumps(x['options'])}")
-            else:
-                print(f"  step {x['step']:>2} [{x['tier']}] -> NONE: {x['reason']}")
+        print(json.dumps(result, indent=2, allow_nan=False))
+    else:
+        print(result['advisory'])
+        for p, s in snap.items():
+            print(p, json.dumps(s, allow_nan=False))
+        for p, n in notes.items():
+            print(p, '; '.join(n))
+        for step in plan:
+            print(json.dumps(step, allow_nan=False))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

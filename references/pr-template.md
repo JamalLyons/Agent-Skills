@@ -1,31 +1,26 @@
-# PR body template
+# PR body
+
+Use `Closes #<n>` only for fully fulfilled acceptance with required evidence; otherwise `Part of #<n>`.
 
 ```markdown
-Closes #<n>            ← or "Part of #<n>" if anything is deferred
+<Closes or Part of issue references>
 
 ## Summary
-<2-4 sentences: what this PR delivers, in user terms.>
+<Concrete problem and resulting behavior>
 
-## Changes (one commit per step)
-| # | Step | Commit |
-|---|------|--------|
-| 1 | <step title> | <short sha> |
-| 2 | ... | ... |
+## Changes
+- <coherent step and accepted commit SHA>
 
-## Issue checklist
-- [x] <issue task>: step 1
-- [x] <issue task>: steps 2-3
-- [ ] <issue task>: **deferred**: <why / follow-up>
-- [ ] <issue task>: **needs a human**: <exactly what to do, e.g. "add a Developer ID cert to the keychain, then run `just sign`">
+## Acceptance
+- [x] <criterion and evidence>
+- [ ] <deferred/needs human; exact remaining action>
 
 ## Verification
-- Build: ✅ `<cmd>`
-- Tests: ✅ `<cmd>`: <N passed>
-- Lint/format: ✅ `<cmd>`
-- Manual: <anything you actually exercised, e.g. ran `localbot run "Demo" --var x=1`>
+- <command>: <actual outcome, relevant evidence>
+- <unavailable/not run check and reason; practical limitation>
 
-## Notes for reviewers
-<design decisions, trade-offs, anything surprising found along the way; stacked-PR note if based on another branch>
+## Review notes
+<Material decisions, unresolved concerns, actual stacked PR base if applicable>
 ```
 
-Leave out sections that would be empty. Keep it scannable. Reviewers read the table and the checklist first.
+Omit empty sections. Never pre-fill pass marks, invent manual testing, or imply approval/merge. Partial work with unresolved required checks must be an authorized draft and explicitly identified. Use actual PR base/head for the change summary. Publish via a body file; after an ambiguous API result look for the existing PR before retrying. Link immediately through the host's tool after creation/update/push. Never post issue comments unless separately requested.
