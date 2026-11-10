@@ -1,0 +1,25 @@
+{
+  "_comment": "Edit freely. tiers: model roster per difficulty. usage_overrides: % LEFT this week for providers whose usage can't be read live (cursor, antigravity); remove or update as it changes. Read by scripts/route.py.",
+  "tiers": {
+    "easy": [
+      { "model": "gemini-3.8-flash", "provider": "antigravity", "options": { "thinking_level": "high" } },
+      { "model": "composer-2.5",     "provider": "cursor",      "options": {} },
+      { "model": "gpt-6-luna",       "provider": "codex",       "options": { "reasoningEffort": "high" } }
+    ],
+    "hard": [
+      { "model": "claude-opus-5-5",  "provider": "claudeAgent", "options": { "effort": "medium" }, "preferred": true },
+      { "model": "grok-4.7",         "provider": "cursor",      "options": { "reasoning_effort": "medium" } },
+      { "model": "gpt-6.1-sol",      "provider": "codex",       "options": { "reasoningEffort": "medium" } }
+    ]
+  },
+  "usage_overrides": {},
+  "routing": {
+    "min_weekly_left_pct": 15,
+    "min_session_left_pct": 10,
+    "assumed_left_pct_when_unknown": 50,
+    "step_cost_pct": { "easy": 3, "hard": 8 },
+    "preferred_bonus": 1.25,
+    "reset_soon_hours": 24,
+    "reset_soon_bonus": 1.4
+  }
+}

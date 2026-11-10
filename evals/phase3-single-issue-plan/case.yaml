@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: phase3-single-issue-plan
+expected_outcome: |
+  Up to the approval gate: the agent reads issue #4 and its dependencies, explores the repo and its
+  conventions, records baseline checks, and produces an ordered step plan that covers every issue task
+  (or flags it as deferred or needing a human, e.g. code signing and TCC grants), plus a concrete first sub-agent brief.

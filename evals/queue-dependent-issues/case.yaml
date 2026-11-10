@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: queue-dependent-issues
+expected_outcome: |
+  Plans both issues before starting work, notices that #5 (Phase 4) depends on the unfinished Phase 3 (#4),
+  and raises that at a single approval gate with a sensible proposal (stacked branch, reorder, or deferral).

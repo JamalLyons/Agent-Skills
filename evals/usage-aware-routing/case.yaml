@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: usage-aware-routing
+expected_outcome: |
+  Plans issue #10 with every step rated easy or hard and assigned a model from the right tier, using the
+  user-stated usage (Gemini 30%, GPT 70%, Cursor ~50%) so easy work leans on GPT Luna over Gemini and Claude is spared,
+  groups independent steps into parallel waves, and shows the usage snapshot and routing at the approval gate.
