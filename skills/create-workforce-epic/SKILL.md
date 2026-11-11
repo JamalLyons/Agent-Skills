@@ -35,7 +35,7 @@ For an existing epic, run `python3 <skill-dir>/scripts/epic_status.py --repo R -
 
 1. Read the epic body and every comment (or, for a new epic, the user's description and any documents they point to), plus linked issues, PRs, and documents. Note which referenced dependencies are actually merged into the default branch.
 2. Read the repository instructions (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING`), architecture, entry points, tests, and CI. Use the user's checkout when they are in one; otherwise a shallow clone into the session scratch directory is fine for reading. Do not modify it.
-3. Find the real build/test/lint commands: inspect manifests and CI, and run `~/.claude/skills/start-issue-workforce/scripts/detect_checks.sh <repo-dir>` for hints when installed. Verification commands in tasks must be commands that exist in the repo. Do not execute scripts with external side effects.
+3. Find the real build/test/lint commands: inspect manifests and CI, and run the sibling skill's `<skill-dir>/../start-issue-workforce/scripts/detect_checks.sh <repo-dir>` for hints when it is installed. Verification commands in tasks must be commands that exist in the repo. Do not execute scripts with external side effects.
 4. Extract the epic's acceptance criteria as `C1..Cn`. When the epic or description has none, derive them from its stated goals and mark each `(derived)` so the user can confirm them at the gate. For a new epic, also write its title, a summary of the goal, background, and out-of-scope items; these become the epic issue body together with the criteria.
 
 ## 2. Decompose

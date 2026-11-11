@@ -1,6 +1,6 @@
 # Workforce skills
 
-Claude Code skills for handing GitHub work to a team of agents. GitHub issues are the queue.
+[Agent Skills](https://agentskills.io) for handing GitHub work to a team of agents. GitHub issues are the queue. They work in Claude Code, Codex, Cursor, and Gemini CLI.
 
 | Skill | What it does |
 |-------|--------------|
@@ -16,17 +16,26 @@ git clone https://github.com/JamalLyons/agent-workforce-skills ~/.claude/skills/
 ~/.claude/skills/agent-workforce-skills/install.sh
 ```
 
-Claude Code only discovers skills one level deep (`~/.claude/skills/<name>/SKILL.md`), so `install.sh` symlinks each folder in `skills/` into `~/.claude/skills/`. It is idempotent. Re-run it after pulling when a skill is added or renamed; it also removes broken links left behind by renamed or deleted skills from this repo. Set `CLAUDE_SKILLS_DIR` to install somewhere else.
+Agents only discover skills one level deep (`<skills-dir>/<name>/SKILL.md`), so `install.sh` symlinks each folder in `skills/` into two directories:
+
+| Directory | Read by |
+|---|---|
+| `~/.claude/skills` | Claude Code (and Cursor, for compatibility) |
+| `~/.agents/skills` | Codex, Cursor, and Gemini CLI (the shared Agent Skills location) |
+
+It is idempotent. Re-run it after pulling when a skill is added or renamed; it also removes broken links left behind by renamed or deleted skills from this repo. Override the defaults with `CLAUDE_SKILLS_DIR` / `AGENT_SKILLS_DIR`, or link only into specific directories with `./install.sh --target DIR` (repeatable), for example a project's `.agents/skills`.
+
+New skills show up in a new session: Codex usually picks changes up on its own (restart it if not), Cursor scans at startup, and Gemini CLI has `/skills reload`. Cursor reads both default directories, so it may list each skill twice.
 
 ## Layout
 
 ```
-install.sh                     symlinks skills/* into ~/.claude/skills
+install.sh                     symlinks skills/* into ~/.claude/skills and ~/.agents/skills
 skills/start-issue-workforce/  SKILL.md, config, references, scripts, tests, evals
 skills/create-workforce-epic/  SKILL.md, references, scripts, tests, evals
 ```
 
-Each skill's scripts resolve paths relative to its own folder. `start-issue-workforce` uses `create-workforce-epic`'s `epic_status.py` for epic queues when it is installed and falls back to `gh api` otherwise.
+Each skill's scripts resolve paths relative to its own folder, and the skills refer to each other as siblings (`<skill-dir>/../<other-skill>`), never through an agent-specific path. `start-issue-workforce` uses `create-workforce-epic`'s `epic_status.py` for epic queues when it is installed and falls back to `gh api` otherwise.
 
 ## Validation
 
