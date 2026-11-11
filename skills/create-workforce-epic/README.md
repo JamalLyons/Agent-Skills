@@ -1,6 +1,6 @@
 # create-workforce-epic
 
-A Claude Code skill that turns a large GitHub issue into a queue of PR-sized sub-issues for [`start-issue-workforce`](../start-issue-workforce/).
+A cross-agent skill for Claude Code, Codex, and Cursor that turns a large GitHub issue into a queue of PR-sized sub-issues for [`start-issue-workforce`](../start-issue-workforce/). The workflow uses GitHub CLI and Python, so it does not depend on a Claude-specific runtime.
 
 You give it an epic, or just describe the work. If no epic issue exists yet, the skill creates one. The agent acts as **tech lead**:
 
@@ -52,6 +52,8 @@ evals/                        behavioural test specifications
 ```
 
 ## Validation
+
+Run from this skill's directory (`skills/create-workforce-epic`):
 
 ```bash
 python3 -B -m unittest discover -s tests -v

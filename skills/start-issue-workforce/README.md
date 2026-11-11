@@ -1,6 +1,6 @@
 # start-issue-workforce
 
-A Claude Code skill that turns GitHub issues into pull requests with a team of sub-agents, spread across several model providers.
+A cross-agent skill for Claude Code, Codex, and Cursor that turns GitHub issues into pull requests with a team of scoped agents. The workflow is host-agnostic; available models and delegation depend on the host. In T3 Code it can route work across the configured model providers, while standalone Claude Code uses available Claude models.
 
 You give it an issue link, several issues, a label, a milestone, or an epic made by [`create-workforce-epic`](../create-workforce-epic/) (it takes the epic's ready sub-issues in dependency order). The agent running the skill acts as the **lead engineer**:
 
@@ -37,11 +37,11 @@ python3 scripts/route.py --steps hard,easy,easy,hard --set gemini=30 --set gpt=7
 
 Use `--exclude <provider>` for an absolute prohibition and `--avoid <provider>` for a soft preference. Repeated `--allow-model provider/model` arguments restrict suggestions to capability-validated targets. User-selected models and settings constrain dispatch and retries.
 
-Multi-provider dispatch needs [T3 Code](https://t3.codes) (`delegate_task`). In plain Claude Code, available Claude models may be used (hard: Opus/medium; easy: Sonnet/high) when consistent with the user's choices. Unsupported providers or settings are reported rather than silently substituted. Without supported checkout isolation, implementation runs sequentially.
+Multi-provider dispatch needs [T3 Code](https://t3.codes) (`delegate_task`). In standalone Claude Code, available Claude models may be used (hard: Opus/medium; easy: Sonnet/high) when consistent with the user's choices. Codex and Cursor can run the skill through the shared Agent Skills installation; their actual model roster and delegation features depend on the host runtime. Unsupported providers or settings are reported rather than silently substituted. Without supported checkout isolation, implementation runs sequentially.
 
 ## Install
 
-This skill lives in a multi-skill repository. Install it with the repository's `install.sh` (see the [root README](../../README.md)), which symlinks it to `~/.claude/skills/start-issue-workforce`.
+This skill lives in a multi-skill repository. Install it with the repository's `install.sh` (see the [root README](../../README.md)), which symlinks it into the shared Agent Skills directory (`~/.agents/skills`) and Claude's directory (`~/.claude/skills`) by default. Codex and Cursor discover it through the shared directory; Claude Code discovers it through its directory.
 
 Then paste an issue link and say something like *"spin up a workforce on this"*.
 
@@ -64,7 +64,7 @@ A timed-out wait does not cancel a child. The lead records task and attempt iden
 
 ## Validation
 
-Run the deterministic helper tests from the repository root:
+Run the deterministic helper tests from this skill's directory (`skills/start-issue-workforce`):
 
 ```bash
 python3 -B -m unittest discover -s tests -v
