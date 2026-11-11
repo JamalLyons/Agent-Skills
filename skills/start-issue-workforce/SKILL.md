@@ -1,9 +1,9 @@
 ---
-name: issue-workforce
+name: start-issue-workforce
 description: Implement one or more GitHub issues through scoped agents, usage-aware model routing, lead verification, and one pull request per issue or an explicitly requested combined PR. Use for issue implementation and backlog workforce requests, including planning and delegation. Do not use for issue questions, triage, or reviewing this skill or an existing PR.
 ---
 
-# Issue Workforce
+# Start Issue Workforce
 
 Act as lead engineer: research, plan, delegate coherent implementation steps, verify actual changes, integrate, and prepare the PR. Preserve fresh context per step. Handle tiny issues and trivial corrections directly when delegation adds no value.
 

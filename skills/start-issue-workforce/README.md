@@ -1,4 +1,4 @@
-# issue-workforce
+# start-issue-workforce
 
 A Claude Code skill that turns GitHub issues into pull requests with a team of sub-agents, spread across several model providers.
 
@@ -41,7 +41,7 @@ Multi-provider dispatch needs [T3 Code](https://t3.codes) (`delegate_task`). In 
 
 ## Install
 
-This skill lives in a multi-skill repository. Install it with the repository's `install.sh` (see the [root README](../../README.md)), which symlinks it to `~/.claude/skills/issue-workforce`.
+This skill lives in a multi-skill repository. Install it with the repository's `install.sh` (see the [root README](../../README.md)), which symlinks it to `~/.claude/skills/start-issue-workforce`.
 
 Then paste an issue link and say something like *"spin up a workforce on this"*.
 

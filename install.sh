@@ -10,6 +10,15 @@ DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 mkdir -p "$DEST"
 
 status=0
+
+# Remove broken links into this repo (left behind by renamed or deleted skills).
+for link in "$DEST"/*; do
+  [ -L "$link" ] && [ ! -e "$link" ] || continue
+  case "$(readlink "$link")" in
+    "$REPO"/skills/*) rm "$link"; echo "prune   $(basename "$link")" ;;
+  esac
+done
+
 for dir in "$REPO"/skills/*/; do
   dir="${dir%/}"
   [ -f "$dir/SKILL.md" ] || continue
