@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "repo": "acme/reports",
+  "epic": 42,
+  "label": "workforce",
+  "criteria": [
+    { "id": "C1", "text": "Users can export a report as CSV", "covered_by": ["T1", "T2"] },
+    { "id": "C2", "text": "Export button in the report view", "covered_by": ["T3"] },
+    { "id": "C3", "text": "Exports are only visible to their owner", "covered_by": ["T2"] },
+    { "id": "C4", "text": "Export storage bucket exists in production", "covered_by": ["H1"] },
+    { "id": "C5", "text": "PDF export (derived)", "deferred": "Needs a rendering library decision; separate epic" }
+  ],
+  "tasks": [
+    {
+      "key": "T1",
+      "title": "Add ExportJob model and migration",
+      "tier": "hard",
+      "summary": "Introduce the ExportJob model that tracks export requests and their status. Other export tasks build on it.",
+      "scope": ["ExportJob model with pending/running/done/failed status", "Migration with rollback"],
+      "out_of_scope": ["API endpoints", "UI"],
+      "owned_paths": ["src/models/export_job.py", "migrations/"],
+      "acceptance": ["Migration applies and rolls back cleanly", "Model tests cover every status transition"],
+      "verify": ["make test", "make migrate-check"],
+      "notes": "Follow the pattern in src/models/report.py."
+    },
+    {
+      "key": "H1",
+      "title": "Provision the export storage bucket",
+      "kind": "human",
+      "summary": "Create the production bucket for export files and add its name to the deployment secrets.",
+      "acceptance": ["EXPORT_BUCKET is set in production and staging secrets"]
+    },
+    {
+      "key": "T2",
+      "title": "CSV export endpoint",
+      "tier": "hard",
+      "summary": "POST /reports/:id/exports starts a CSV export; GET /exports/:id returns status and a download link.",
+      "scope": ["Endpoints and serializer", "Owner-only access checks"],
+      "out_of_scope": ["PDF", "UI"],
+      "owned_paths": ["src/api/exports.py", "tests/api/test_exports.py"],
+      "acceptance": ["Owner can create and download a CSV export", "Another user's export returns 404"],
+      "verify": ["make test"],
+      "blocked_by": ["T1", "H1"]
+    },
+    {
+      "key": "T3",
+      "title": "Export button in the report view",
+      "tier": "easy",
+      "summary": "Add an Export CSV button that starts an export and shows progress until the download is ready.",
+      "owned_paths": ["web/src/reports/ExportButton.tsx", "web/src/reports/ReportView.tsx"],
+      "acceptance": ["Button starts an export and offers the download when done", "Errors show inline"],
+      "verify": ["npm --prefix web test"],
+      "blocked_by": ["T2"]
+    }
+  ]
+}
