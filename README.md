@@ -12,9 +12,11 @@ Typical flow: *"break owner/repo#42 into a workforce epic"* → review the plan 
 ## Install
 
 ```bash
-git clone https://github.com/JamalLyons/agent-workforce-skills ~/.claude/skills/agent-workforce-skills
-~/.claude/skills/agent-workforce-skills/install.sh
+git clone https://github.com/JamalLyons/agent-workforce-skills ~/Developer/GitHub/agent-workforce-skills
+~/Developer/GitHub/agent-workforce-skills/install.sh
 ```
+
+Clone it anywhere; the location above is just an example. The agents see the skills through links, so edits in the clone take effect right away. If you move the clone, run `install.sh` again from the new location to repoint the links.
 
 Agents only discover skills one level deep (`<skills-dir>/<name>/SKILL.md`), so `install.sh` symlinks each folder in `skills/` into two directories:
 
