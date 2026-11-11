@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "repo": "acme/reports",
+  "epic": {
+    "key": "csv-export",
+    "title": "Epic: CSV export for reports",
+    "summary": "Let report owners export any report as CSV from the report view.",
+    "background": "Customers copy tables by hand into spreadsheets; support gets several requests a week.",
+    "out_of_scope": ["PDF export", "Scheduled exports"],
+    "notes": "Requested in the product sync; no existing issue covered it."
+  },
+  "criteria": [
+    { "id": "C1", "text": "Owners can export a report as CSV (derived)", "covered_by": ["T1", "T2"] },
+    { "id": "C2", "text": "Export button in the report view (derived)", "covered_by": ["T2"] },
+    { "id": "C3", "text": "PDF export", "deferred": "Out of scope for this epic" }
+  ],
+  "tasks": [
+    {
+      "key": "T1",
+      "title": "CSV export endpoint",
+      "tier": "hard",
+      "summary": "GET /reports/:id/export.csv streams the report as CSV for its owner.",
+      "owned_paths": ["src/api/export.py", "tests/api/test_export.py"],
+      "acceptance": ["Owner receives a CSV matching the report table", "Other users receive 404"],
+      "verify": ["make test"]
+    },
+    {
+      "key": "T2",
+      "title": "Export CSV button in the report view",
+      "tier": "easy",
+      "summary": "Add an Export CSV button that downloads from the new endpoint.",
+      "owned_paths": ["web/src/reports/ExportButton.tsx"],
+      "acceptance": ["Clicking the button downloads the CSV"],
+      "verify": ["npm --prefix web test"],
+      "blocked_by": ["T1"]
+    }
+  ]
+}

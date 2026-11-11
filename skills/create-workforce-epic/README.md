@@ -2,12 +2,12 @@
 
 A Claude Code skill that turns a large GitHub issue into a queue of PR-sized sub-issues for [`start-issue-workforce`](../start-issue-workforce/).
 
-You give it an epic. The agent acts as **tech lead**:
+You give it an epic, or just describe the work. If no epic issue exists yet, the skill creates one. The agent acts as **tech lead**:
 
-1. **Recon:** reads the epic, its comments, linked work, and the repository (conventions, CI, real test commands).
+1. **Recon:** reads the epic (or your description), its comments, linked work, and the repository (conventions, CI, real test commands).
 2. **Decompose:** writes a plan of tasks. Each task is one PR, with scope, owned paths, checkable acceptance criteria, verification commands, an easy/hard tier, and real blocked-by dependencies. Work only a person can do becomes a *human* task. Every epic criterion is covered by a task or explicitly deferred.
 3. **Approval gate:** validates the plan, does a dry run against GitHub, and shows a table, dependency graph, coverage, and the exact writes. Nothing is created yet.
-4. **Apply:** creates the task issues, links them as **native sub-issues** of the epic, and adds **native blocked-by** dependencies.
+4. **Apply:** creates the epic issue if needed, then the task issues, links them as **native sub-issues** of the epic, and adds **native blocked-by** dependencies.
 5. **Stop:** reports the ready set and suggests running `start-issue-workforce` on the epic. It does not launch it.
 
 GitHub is the queue: progress shows on the epic, merging a task's PR (`Closes #n`) closes its sub-issue, and `epic_status.py` shows what is ready next.
@@ -41,7 +41,8 @@ Both scripts use the GitHub CLI (`gh`), authenticated for the target repo, and t
 SKILL.md                      the workflow
 references/decomposition.md   sizing, slicing, dependencies, human tasks, tiers
 references/plan-format.md     plan JSON fields and rendered issue body
-references/plan.example.json  complete valid plan
+references/plan.example.json  complete valid plan for an existing epic
+references/plan.new-epic.example.json  plan that creates its own epic
 references/github.md          endpoints, idempotency, status semantics, limits
 scripts/epiclib.py            validation, rendering, markers, gh client
 scripts/apply_plan.py         validate / render / apply

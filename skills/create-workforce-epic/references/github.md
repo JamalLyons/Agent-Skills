@@ -9,6 +9,7 @@ Checked against docs.github.com and the live GraphQL schema on 2026-11-10.
 | Read epic / external blocker | `GET /repos/{o}/{r}/issues/{n}` | A `pull_request` key means it is a PR, which is rejected |
 | Find existing tasks | `GET /repos/{o}/{r}/issues/{epic}/sub_issues` and `GET /repos/{o}/{r}/issues?state=all&labels={label}` | Paginated at 100. Matched by hidden marker, not by title |
 | Label | `GET` / `POST /repos/{o}/{r}/labels` | Created only when missing |
+| Create new epic | `POST /repos/{o}/{r}/issues` with `title`, `body`, `labels` | Only when the plan's `epic` is an object and no labelled issue carries its root marker |
 | Create task | `POST /repos/{o}/{r}/issues` with `title`, `body`, `labels` | The label is set at creation, so an interrupted run can find the issue again |
 | Link sub-issue | `POST /repos/{o}/{r}/issues/{epic}/sub_issues` with `sub_issue_id` | **Integer `id`**, not `number`. The sub-issue must belong to the same owner. `replace_parent` is never sent |
 | Check parent after a 422 | `GET /repos/{o}/{r}/issues/{n}/parent` | Another parent → stop (exit 2) |
@@ -20,6 +21,7 @@ All writes produce content, and GitHub may apply secondary rate limits to fast c
 ## Idempotency and failures
 
 - Each task body carries `<!-- workforce-epic: {...} -->` with the epic reference and task key. Before writing, `apply` collects every issue under the epic and every issue with the plan label, then matches markers. Keys already present are reused and never edited.
+- A new epic carries `<!-- workforce-epic-root: {"v":1,"key":...} -->` and the plan label. Before creating it, `apply` looks for a labelled issue with that root key and reuses it; two matches stop the run, and a closed match stops it too.
 - A create whose response is lost (timeout, reset) may still have succeeded. Re-running finds it by label and marker and continues with linking and dependencies.
 - Two issues with the same marker key stop the run. A person decides which to close.
 - When the dependencies endpoint returns 404 or 410 (feature unavailable on the host), `apply` warns and continues. Blockers are then recorded only in each body's Dependencies line, and `epic_status.py` cannot see them.

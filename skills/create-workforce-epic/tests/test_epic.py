@@ -14,8 +14,8 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 
 import apply_plan  # noqa: E402
 import epic_status  # noqa: E402
-from epiclib import (Gh, GhError, PlanError, parse_include, parse_marker,  # noqa: E402
-                     paths_overlap, render_body, validate_plan)
+from epiclib import (Gh, GhError, PlanError, parse_epic_marker, parse_include,  # noqa: E402
+                     parse_marker, paths_overlap, render_body, render_epic_body, validate_plan)
 
 REPO = 'acme/app'
 
@@ -40,6 +40,13 @@ def base_plan(**over):
     }
     plan.update(over)
     return plan
+
+
+def new_epic_plan(**epic_over):
+    epic = {'key': 'csv-export', 'title': 'CSV export', 'summary': 'Let users export reports.',
+            'background': 'Customers ask for spreadsheets.', 'out_of_scope': ['PDF']}
+    epic.update(epic_over)
+    return base_plan(epic=epic)
 
 
 class FakeGitHub(Gh):
@@ -170,6 +177,11 @@ class ValidationTests(unittest.TestCase):
         plan = validate_plan(data)
         self.assertEqual(plan.order, ['T1', 'H1', 'T2', 'T3'])
         self.assertEqual(plan.warnings, [])
+
+    def test_new_epic_example_is_valid(self):
+        data = json.loads((ROOT / 'references' / 'plan.new-epic.example.json').read_text())
+        plan = validate_plan(data)
+        self.assertEqual((plan.epic, plan.epic_spec['key'], plan.warnings), (None, 'csv-export', []))
 
     def test_cycle_detected(self):
         p = base_plan()
@@ -390,6 +402,113 @@ class ApplyTests(unittest.TestCase):
                 code = apply_plan.main(['validate', write_plan(d, {'version': 2})])
         self.assertEqual(code, 2)
         self.assertIn('plan invalid', err.getvalue())
+
+
+class NewEpicTests(unittest.TestCase):
+    def test_validation(self):
+        plan = validate_plan(new_epic_plan())
+        self.assertIsNone(plan.epic)
+        self.assertEqual(plan.epic_ref, 'acme/app#new')
+        with self.assertRaises(PlanError) as cm:
+            validate_plan(new_epic_plan(key='bad key', title='', summary='', notes='workforce-epic'))
+        e = '\n'.join(cm.exception.errors)
+        for needle in ('epic: "key"', 'epic: "title"', 'epic: "summary"', 'reserved marker'):
+            self.assertIn(needle, e)
+        with self.assertRaises(PlanError) as cm:
+            validate_plan(base_plan(epic='42'))
+        self.assertIn('object describing a new epic', cm.exception.errors[0])
+
+    def test_epic_body(self):
+        plan = validate_plan(new_epic_plan())
+        body = render_epic_body(plan)
+        self.assertEqual(parse_epic_marker(body), {'v': 1, 'key': 'csv-export'})
+        self.assertIsNone(parse_marker(body))          # not mistaken for a task
+        self.assertIn('- [ ] **C1**: API exists', body)
+        self.assertIn('**C3** (deferred): Docs site. separate epic', body)
+        self.assertIn('## Out of scope\n- PDF', body)
+        self.assertIn('Part of the new epic', render_body(plan, plan.by_key['T1'], {}))
+
+    def test_dry_run_plans_epic_first_and_writes_nothing(self):
+        gh = FakeGitHub()
+        code, rep, _ = run_apply(gh, new_epic_plan())
+        self.assertEqual(code, 0)
+        self.assertEqual(gh.writes, [])
+        self.assertEqual([a['action'] for a in rep['actions']][:3], ['label', 'epic', 'create'])
+        self.assertIn('new epic "CSV export"', rep['actions'][3]['detail'])
+        self.assertIsNone(rep['epic'])
+
+    def test_execute_creates_epic_then_tasks(self):
+        gh = FakeGitHub()
+        code, rep, err = run_apply(gh, new_epic_plan(), '--execute')
+        self.assertEqual(code, 0, err)
+        self.assertTrue(rep['epic_created'])
+        epic = gh.issues[rep['epic']]
+        self.assertEqual(epic['title'], 'CSV export')
+        self.assertEqual([lb['name'] for lb in epic['labels']], ['workforce'])
+        self.assertEqual(len(gh.subs[rep['epic']]), 3)
+        t1 = gh.issues[rep['tasks']['T1']]
+        self.assertEqual(parse_marker(t1['body'])['epic'], f'acme/app#{rep["epic"]}')
+        self.assertIn(f'Part of #{rep["epic"]}', t1['body'])
+        self.assertEqual(gh.writes[1][1], 'repos/acme/app/issues')     # epic right after the label
+        self.assertEqual(gh.writes[1][2]['title'], 'CSV export')
+
+    def test_rerun_reuses_epic(self):
+        gh = FakeGitHub()
+        first = run_apply(gh, new_epic_plan(), '--execute')[1]
+        before = len(gh.writes)
+        code, rep, _ = run_apply(gh, new_epic_plan(), '--execute')
+        self.assertEqual(code, 0)
+        self.assertEqual(len(gh.writes), before)
+        self.assertEqual(rep['epic'], first['epic'])
+        self.assertFalse(rep['epic_created'])
+
+    def test_lost_epic_response_does_not_duplicate(self):
+        gh = FakeGitHub()
+        gh.fail_on = ('POST', r'/issues$', 1, 'after')
+        self.assertEqual(run_apply(gh, new_epic_plan(), '--execute')[0], 1)
+        code, rep, err = run_apply(gh, new_epic_plan(), '--execute')
+        self.assertEqual(code, 0, err)
+        titles = [i['title'] for i in gh.issues.values()]
+        self.assertEqual(titles.count('CSV export'), 1)
+        self.assertEqual(len(gh.subs[rep['epic']]), 3)
+
+    def test_duplicate_or_closed_epic_stops(self):
+        gh = FakeGitHub()
+        gh.labels.add('workforce')
+        body = render_epic_body(validate_plan(new_epic_plan()))
+        gh.add_issue('CSV export', body, labels=['workforce'])
+        gh.add_issue('CSV export', body, labels=['workforce'])
+        code, _, err = run_apply(gh, new_epic_plan(), '--execute')
+        self.assertEqual(code, 2)
+        self.assertIn('several issues', err)
+        gh = FakeGitHub()
+        gh.labels.add('workforce')
+        gh.add_issue('CSV export', body, labels=['workforce'], state='closed')
+        code, _, err = run_apply(gh, new_epic_plan(), '--execute')
+        self.assertEqual(code, 2)
+        self.assertIn('closed', err)
+        self.assertEqual(gh.writes, [])
+
+    def test_different_key_creates_separate_epic(self):
+        gh = FakeGitHub()
+        run_apply(gh, new_epic_plan(), '--execute')
+        rep = run_apply(gh, new_epic_plan(key='csv-export-2'), '--execute')[1]
+        self.assertTrue(rep['epic_created'])
+
+    def test_render_includes_epic_offline(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = apply_plan.main(['render', write_plan(d, new_epic_plan()), '--json'])
+        self.assertEqual(code, 0)
+        data = json.loads(out.getvalue())
+        self.assertEqual(list(data)[:2], ['epic', 'T1'])
+        self.assertIn('workforce-epic-root', data['epic']['body'])
+
+    def test_missing_numbered_epic_is_plan_error(self):
+        code, _, err = run_apply(FakeGitHub(), base_plan(epic=500), '--execute')
+        self.assertEqual(code, 2)
+        self.assertIn('does not exist', err)
 
 
 class GhClientTests(unittest.TestCase):

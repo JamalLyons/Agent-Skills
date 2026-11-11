@@ -14,6 +14,7 @@ MAX_TASKS = 50          # hard cap per plan; GitHub also caps sub-issues per par
 SOFT_MAX_TASKS = 15     # above this, suggest splitting the epic
 MAX_BODY = 65000        # GitHub rejects issue bodies over 65536 characters
 MARKER_RE = re.compile(r'<!--\s*workforce-epic:\s*(\{.*?\})\s*-->', re.S)
+EPIC_MARKER_RE = re.compile(r'<!--\s*workforce-epic-root:\s*(\{.*?\})\s*-->', re.S)
 KEY_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_-]{0,31}$')
 REPO_RE = re.compile(r'^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$')
 EXTERNAL_RE = re.compile(r'^#([1-9][0-9]*)$')
@@ -32,12 +33,13 @@ class PlanError(Exception):
 @dataclass
 class Plan:
     repo: str
-    epic: int
+    epic: int | None                      # None until a new epic is found or created
     label: str
     tasks: list[dict]
     criteria: list[dict]
     order: list[str]                      # task keys, dependencies first
     warnings: list[str] = field(default_factory=list)
+    epic_spec: dict | None = None         # set when the plan creates its own epic
 
     @property
     def by_key(self) -> dict[str, dict]:
@@ -45,7 +47,13 @@ class Plan:
 
     @property
     def epic_ref(self) -> str:
-        return f'{self.repo}#{self.epic}'
+        return f'{self.repo}#{self.epic if self.epic else "new"}'
+
+    @property
+    def epic_label(self) -> str:
+        if self.epic:
+            return f'#{self.epic}'
+        return f'new epic "{self.epic_spec["title"]}"'
 
 
 # ---------------------------------------------------------------- validation
@@ -117,8 +125,11 @@ def validate_plan(data: Any, max_tasks: int = MAX_TASKS) -> Plan:
     if not isinstance(repo, str) or not REPO_RE.match(repo):
         errs.append('"repo" must look like owner/name')
     epic = data.get('epic')
-    if not isinstance(epic, int) or isinstance(epic, bool) or epic < 1:
-        errs.append('"epic" must be a positive issue number')
+    epic_spec = None
+    if isinstance(epic, dict):
+        epic_spec, epic = _validate_epic_spec(epic, errs), None
+    elif not isinstance(epic, int) or isinstance(epic, bool) or epic < 1:
+        errs.append('"epic" must be an existing issue number or an object describing a new epic')
     label = data.get('label', DEFAULT_LABEL)
     if not isinstance(label, str) or not label.strip() or len(label) > 50 or ',' in label:
         errs.append('"label" must be a non-empty string of at most 50 characters without commas')
@@ -257,7 +268,26 @@ def validate_plan(data: Any, max_tasks: int = MAX_TASKS) -> Plan:
     if errs:
         raise PlanError(errs)
     return Plan(repo=repo, epic=epic, label=label.strip(), tasks=tasks,
-                criteria=criteria, order=order, warnings=warns)
+                criteria=criteria, order=order, warnings=warns, epic_spec=epic_spec)
+
+
+def _validate_epic_spec(spec: dict, errs: list[str]) -> dict:
+    where = 'epic'
+    if not isinstance(spec.get('key'), str) or not KEY_RE.match(spec['key']):
+        errs.append(f'{where}: "key" must match {KEY_RE.pattern} (unique per repository, stable across re-runs)')
+    title = spec.get('title')
+    if not isinstance(title, str) or not title.strip() or len(title) > 256:
+        errs.append(f'{where}: "title" must be 1-256 characters')
+    if not isinstance(spec.get('summary'), str) or not spec['summary'].strip():
+        errs.append(f'{where}: "summary" is required')
+    for name in ('background', 'notes'):
+        if not isinstance(spec.get(name, ''), str):
+            errs.append(f'{where}: "{name}" must be a string')
+    spec['out_of_scope'] = _str_list(spec, 'out_of_scope', errs, where)
+    texts = [spec.get(n) for n in ('title', 'summary', 'background', 'notes')] + spec['out_of_scope']
+    if any(isinstance(t, str) and 'workforce-epic' in t for t in texts):
+        errs.append(f'{where}: text must not contain the reserved marker "workforce-epic"')
+    return spec
 
 
 def by_key_list(tasks: list[dict], key: str) -> dict:
@@ -293,6 +323,45 @@ def make_marker(plan: Plan, task: dict) -> str:
     return f'<!-- workforce-epic: {json.dumps(meta, separators=(",", ":"))} -->'
 
 
+def make_epic_marker(spec: dict) -> str:
+    return f'<!-- workforce-epic-root: {json.dumps({"v": 1, "key": spec["key"]}, separators=(",", ":"))} -->'
+
+
+def parse_epic_marker(body: str | None) -> dict | None:
+    m = EPIC_MARKER_RE.search(body or '')
+    if not m:
+        return None
+    try:
+        meta = json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None
+    return meta if isinstance(meta, dict) and isinstance(meta.get('key'), str) else None
+
+
+def render_epic_body(plan: Plan) -> str:
+    spec = plan.epic_spec
+    parts = [make_epic_marker(spec), '## Summary\n' + spec['summary'].strip()]
+    if spec.get('background', '').strip():
+        parts.append('## Background\n' + spec['background'].strip())
+    crit = []
+    for c in plan.criteria:
+        if c.get('deferred'):
+            crit.append(f'- **{c["id"]}** (deferred): {c["text"]}. {c["deferred"]}')
+        else:
+            crit.append(f'- [ ] **{c["id"]}**: {c["text"]}')
+    parts.append('## Acceptance criteria\n' + '\n'.join(crit))
+    if spec['out_of_scope']:
+        parts.append('## Out of scope\n' + _bullets(spec['out_of_scope']))
+    if spec.get('notes', '').strip():
+        parts.append('## Notes\n' + spec['notes'].strip())
+    parts.append('## Tasks\nTracked as sub-issues of this epic, with blocked-by dependencies. '
+                 'Created by create-workforce-epic.')
+    body = '\n\n'.join(parts) + '\n'
+    if len(body) > MAX_BODY:
+        raise PlanError([f'epic: rendered body is {len(body)} characters, over {MAX_BODY}'])
+    return body
+
+
 def parse_marker(body: str | None) -> dict | None:
     if not body:
         return None
@@ -315,7 +384,7 @@ def _bullets(items: list[str], check: bool = False) -> str:
 
 def render_body(plan: Plan, task: dict, refs: dict[str, str]) -> str:
     """refs maps blocker strings (task keys and "#n") to display text such as "#12"."""
-    head = f'> Part of #{plan.epic} · task `{task["key"]}` · '
+    head = f'> Part of {f"#{plan.epic}" if plan.epic else "the new epic"} · task `{task["key"]}` · '
     head += '**needs a human**' if task['kind'] == 'human' else f'tier **{task["tier"]}**'
     parts = [make_marker(plan, task), head, '## Summary\n' + task['summary'].strip()]
     if task['scope']:

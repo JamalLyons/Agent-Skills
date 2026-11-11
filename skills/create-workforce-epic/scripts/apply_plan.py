@@ -23,7 +23,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from epiclib import (EXTERNAL_RE, Gh, GhError, Plan, PlanError, load_plan,  # noqa: E402
-                     parse_marker, render_body)
+                     parse_epic_marker, parse_marker, render_body, render_epic_body)
 
 LABEL_COLOR = '5319e7'
 LABEL_DESC = 'Task issue created by create-workforce-epic'
@@ -39,6 +39,7 @@ class Applier:
         self.external: dict[str, dict] = {}    # "#n" -> {number, id}
         self.sub_ids: set[int] = set()
         self.deps_supported = True
+        self.epic_created = False
 
     # -- helpers
     def _act(self, kind: str, key: str | None, detail: str, done: bool) -> None:
@@ -55,17 +56,63 @@ class Applier:
 
     # -- phases
     def preflight(self) -> None:
-        epic = self.gh.rest('GET', f'{self.base}/issues/{self.plan.epic}')
-        if 'pull_request' in epic:
-            raise PlanError([f'#{self.plan.epic} is a pull request, not an issue'])
-        if epic.get('state') != 'open':
-            raise PlanError([f'epic #{self.plan.epic} is closed; reopen it or choose another epic'])
-        self.epic_title = epic.get('title', '')
-
-        found: dict[str, list[dict]] = {}
-        subs = self.gh.paginate(f'{self.base}/issues/{self.plan.epic}/sub_issues')
-        self.sub_ids = {s['id'] for s in subs}
         labelled = self.gh.paginate(f'{self.base}/issues?state=all&labels={quote(self.plan.label)}')
+        if self.plan.epic_spec:
+            self.find_new_epic(labelled)
+        else:
+            try:
+                epic = self.gh.rest('GET', f'{self.base}/issues/{self.plan.epic}')
+            except GhError as e:
+                if e.status == 404:
+                    raise PlanError([f'epic #{self.plan.epic} does not exist in {self.plan.repo}; '
+                                     'use an "epic" object to create a new one']) from e
+                raise
+            self.check_epic(epic)
+        subs = self.gh.paginate(f'{self.base}/issues/{self.plan.epic}/sub_issues') if self.plan.epic else []
+        self.sub_ids = {s['id'] for s in subs}
+        self.find_tasks(subs, labelled)
+        self.check_external_blockers()
+
+    def check_epic(self, epic: dict) -> None:
+        if 'pull_request' in epic:
+            raise PlanError([f'#{epic["number"]} is a pull request, not an issue'])
+        if epic.get('state') != 'open':
+            raise PlanError([f'epic #{epic["number"]} is closed; reopen it or choose another epic'])
+
+    def find_new_epic(self, labelled: list[dict]) -> None:
+        """A plan that defines its own epic: reuse the issue carrying its root marker, if any."""
+        spec = self.plan.epic_spec
+        roots = [i for i in labelled if 'pull_request' not in i
+                 and (parse_epic_marker(i.get('body')) or {}).get('key') == spec['key']]
+        if len(roots) > 1:
+            raise PlanError([f'epic key "{spec["key"]}" already exists as several issues: '
+                             + ', '.join(f'#{i["number"]}' for i in roots) + '; close the extras first'])
+        if roots:
+            self.check_epic(roots[0])
+            self.plan.epic = roots[0]['number']
+            if roots[0].get('title') != spec['title']:
+                self.warnings.append(f'epic #{self.plan.epic} title differs from the plan; not edited')
+
+    def create_epic(self) -> None:
+        spec = self.plan.epic_spec
+        if not spec:
+            return
+        if self.plan.epic and not self.epic_created:
+            self._act('reuse', 'epic', f'#{self.plan.epic} {spec["title"]}', True)
+            return
+        body = render_epic_body(self.plan)
+        if not self.execute:
+            self._act('epic', 'epic', f'create epic "{spec["title"]}"', False)
+            return
+        created = self._write('POST', f'{self.base}/issues',
+                              {'title': spec['title'], 'body': body, 'labels': [self.plan.label]})
+        self.plan.epic, self.epic_created = created['number'], True
+        self._act('epic', 'epic', f'#{created["number"]} {spec["title"]}', True)
+
+    def find_tasks(self, subs: list[dict], labelled: list[dict]) -> None:
+        if not self.plan.epic:
+            return                      # a new epic has no tasks yet
+        found: dict[str, list[dict]] = {}
         seen: set[int] = set()
         for issue in subs + labelled:
             if issue['id'] in seen or 'pull_request' in issue:
@@ -91,6 +138,7 @@ class Applier:
             if i['state'] != 'open':
                 self.warnings.append(f'task {k} (#{i["number"]}) is already closed')
 
+    def check_external_blockers(self) -> None:
         for t in self.plan.tasks:
             for b in t['blocked_by']:
                 m = EXTERNAL_RE.match(b)
@@ -154,7 +202,7 @@ class Applier:
     def link(self, key: str, issue: dict | None) -> None:
         label = f'#{issue["number"]}' if issue else key
         if not self.execute:
-            self._act('sub-issue', key, f'link {label} under epic #{self.plan.epic}', False)
+            self._act('sub-issue', key, f'link {label} under {self.plan.epic_label}', False)
             return
         try:
             self._write('POST', f'{self.base}/issues/{self.plan.epic}/sub_issues', {'sub_issue_id': issue['id']})
@@ -214,11 +262,13 @@ class Applier:
     def run(self) -> None:
         self.preflight()
         self.ensure_label()
+        self.create_epic()
         self.tasks()
 
     def report(self) -> dict:
         return {
-            'repo': self.plan.repo, 'epic': self.plan.epic, 'executed': self.execute,
+            'repo': self.plan.repo, 'epic': self.plan.epic, 'epic_created': self.epic_created,
+            'executed': self.execute,
             'tasks': {k: self.issues[k]['number'] for k in self.plan.order if k in self.issues},
             'actions': self.actions, 'warnings': self.warnings,
         }
@@ -249,7 +299,8 @@ def main(argv: list[str] | None = None, gh: Gh | None = None) -> int:
         if args.json:
             print(json.dumps({'ok': True, 'order': plan.order, 'warnings': plan.warnings}, indent=2))
         else:
-            print(f'plan ok: {len(plan.tasks)} tasks for {plan.epic_ref}; order {" -> ".join(plan.order)}')
+            print(f'plan ok: {len(plan.tasks)} tasks for {plan.repo} {plan.epic_label}; '
+                  f'order {" -> ".join(plan.order)}')
             for w in plan.warnings:
                 print(f'warning: {w}')
         return 0
@@ -260,6 +311,8 @@ def main(argv: list[str] | None = None, gh: Gh | None = None) -> int:
             print(f'unknown task {args.task}', file=sys.stderr)
             return 2
         out = {}
+        if plan.epic_spec and not args.task:
+            out['epic'] = {'title': plan.epic_spec['title'], 'body': render_epic_body(plan)}
         for k in keys:
             t = plan.by_key[k]
             out[k] = {'title': t['title'],
@@ -274,7 +327,7 @@ def main(argv: list[str] | None = None, gh: Gh | None = None) -> int:
     log = (lambda *_: None) if args.json else print
     applier = Applier(plan, gh or Gh(), execute=args.execute, delay=args.delay, log=log)
     if not args.json:
-        print(f'{"APPLY" if args.execute else "DRY RUN"}: {plan.epic_ref} label "{plan.label}"')
+        print(f'{"APPLY" if args.execute else "DRY RUN"}: {plan.repo} {plan.epic_label} label "{plan.label}"')
     code = 0
     try:
         applier.run()
