@@ -12,8 +12,8 @@ Typical flow: *"break owner/repo#42 into a workforce epic"* → review the plan 
 ## Install
 
 ```bash
-git clone https://github.com/JamalLyons/issue-workforce-skill ~/.claude/skills/issue-workforce-skill
-~/.claude/skills/issue-workforce-skill/install.sh
+git clone https://github.com/JamalLyons/agent-workforce-skills ~/.claude/skills/agent-workforce-skills
+~/.claude/skills/agent-workforce-skills/install.sh
 ```
 
 Claude Code only discovers skills one level deep (`~/.claude/skills/<name>/SKILL.md`), so `install.sh` symlinks each folder in `skills/` into `~/.claude/skills/`. It is idempotent. Re-run it after pulling when a skill is added or renamed; it also removes broken links left behind by renamed or deleted skills from this repo. Set `CLAUDE_SKILLS_DIR` to install somewhere else.
