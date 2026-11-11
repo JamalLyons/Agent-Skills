@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: plan-epic-stops-at-gate
+expected_outcome: |
+  The agent reads epic #24 and the repository, writes a valid plan, runs validate and a dry run,
+  and presents one approval gate. It creates no issues.

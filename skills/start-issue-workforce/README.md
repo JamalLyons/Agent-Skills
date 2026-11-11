@@ -2,7 +2,7 @@
 
 A Claude Code skill that turns GitHub issues into pull requests with a team of sub-agents, spread across several model providers.
 
-You give it an issue link, several issues, a label or a milestone. The agent running the skill acts as the **lead engineer**:
+You give it an issue link, several issues, a label, a milestone, or an epic made by [`create-workforce-epic`](../create-workforce-epic/) (it takes the epic's ready sub-issues in dependency order). The agent running the skill acts as the **lead engineer**:
 
 1. **Recon:** reads the issue, its comments and the issues it depends on. It reads the repo's conventions (`CLAUDE.md`, `AGENTS.md`, style guides) and runs the build and tests once to record a baseline.
 2. **Plan:** writes ordered steps with scope, out-of-scope, acceptance criteria and a check command for each. Every issue task maps to a step or is marked *deferred* or *needs a human*.

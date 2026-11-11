@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: authorized-epic-files-issues
+expected_outcome: |
+  With creation pre-authorized, the agent validates, dry-runs, executes apply once, verifies with
+  epic_status.py and stops without starting implementation.
