@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: deferred-follow-up-tracking
+expected_outcome: |
+  Records all three leftovers, verifies actual tracker coverage, and distinguishes #102's
+  required native verification from #103's file ownership without failure-case coverage.
+  Opens the approved PR before one batched question with recommendations for the two
+  uncovered items; without an answer, mutates no issues and reports them as untracked.
+  Retains pending items for resume and limits any later actions to explicit user approval.

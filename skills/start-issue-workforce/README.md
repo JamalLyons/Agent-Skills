@@ -11,6 +11,7 @@ You give it an issue link, several issues, a label, a milestone, or an epic made
 5. **Build:** a fresh scoped sub-agent does each step. Independent steps run in parallel in separate git worktrees.
 6. **Verify:** the lead reads every diff and reruns the tests itself. It then commits the step, asks for fixes, or moves the step to a stronger model.
 7. **Review and PR:** substantive changes receive independent review within the available provider and budget constraints. The lead opens an authorized PR after verification, and uses `Closes #n` only when every required criterion is fulfilled with evidence.
+8. **Follow-up and report:** the lead records discovered problems it leaves unfixed, checks open issues and epic siblings for actual scope/acceptance coverage, and lists outstanding items in the PR. After PR creation it asks once for decisions on partly tracked or untracked items, with a recommendation for each, while continuing the approved queue. Only the user's answer authorizes those specific fixes or issue changes. The final report gives every item's outcome; unanswered items are explicitly untracked, retained in the ledger, and raised again on resume.
 
 ## Default model tiers
 
