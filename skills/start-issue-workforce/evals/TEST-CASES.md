@@ -27,7 +27,7 @@ Cases H01–H22 are implemented in `tests/test_helpers.py` and passed during the
 - **H21 Malformed package JSON:** explicit no-candidate message, not silent output or execution.
 - **H22 Cargo project:** build/test/static/non-mutating format hints emitted.
 
-Run: `python3 -B -m unittest discover -s tests -v` from the repository root. These tests verify helpers; they do not prove the orchestrating model follows the prose.
+Run: `python3 -B -m unittest discover -s tests -v` from this skill's directory (`skills/start-issue-workforce`). These tests verify helpers; they do not prove the orchestrating model follows the prose.
 
 ## Ordinary workflow and scoping
 
