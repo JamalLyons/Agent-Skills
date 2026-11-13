@@ -10,8 +10,8 @@ Surface architectural friction and propose **deepening opportunities**: refactor
 
 This command is _informed_ by the project's domain model and built on a shared design vocabulary:
 
-- Read [codebase-design](../codebase-design/SKILL.md) for the architecture vocabulary (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and its principles (the deletion test, "the interface is the test surface", "one adapter = hypothetical seam, two = real"). Use these terms exactly in every suggestion, and don't drift into "component," "service," "API," or "boundary."
-- The domain language in `GLOSSARY.md` gives names to good seams; ADRs in `docs/adr/` record decisions this command should not re-litigate.
+- When installed, read [codebase-design](../codebase-design/SKILL.md) for useful vocabulary and design heuristics. Preserve repository/domain terminology, API names, and code identifiers; a service or security boundary should keep that name. If the sibling skill is unavailable, assess caller complexity, change locality, testability, and useful isolation directly.
+- Discover the repository's glossary and ADR conventions. They give names and context to existing contracts; do not re-litigate decisions without new evidence.
 
 ## Process
 
@@ -22,7 +22,7 @@ This command is _informed_ by the project's domain model and built on a shared d
 - If the user named a direction (a module, a subsystem, a pain point), take it, and skip the inference below.
 - Otherwise, walk back a good stretch of the commit history (`git log --oneline`) to find the codebase's hot spots, the files and areas that keep coming up, and let those paths pull your attention first. If the changes are scattered with no clear hot spot, widen the net.
 
-Read the project's domain glossary (`GLOSSARY.md`) and any ADRs in the area you're touching first, when present. Their absence does not block a review.
+Read the project's domain glossary and relevant ADRs first, when present (`GLOSSARY.md` and `docs/adr/` are common defaults). Their absence does not block a review.
 
 Walk the codebase directly, or use a fresh-context subagent when available and permitted by the host and user instructions. Don't follow rigid heuristics; explore organically and note where you experience friction:
 
@@ -32,11 +32,11 @@ Walk the codebase directly, or use a fresh-context subagent when available and p
 - Where do tightly-coupled modules leak across their seams?
 - Which parts of the codebase are untested, or hard to test through their current interface?
 
-Apply the **deletion test** to anything you suspect is shallow: would deleting it concentrate complexity, or just move it? A "yes, concentrates" is the signal you want.
+Apply the **deletion test** as a heuristic: where would complexity move if this layer disappeared, and what contract would be lost? A thin layer may protect authorization, compatibility, lifecycle, or independent ownership. Seek a concrete costly change, defect, or navigation problem before recommending consolidation; unchanged structure is the baseline alternative.
 
 ### 2. Present candidates as an HTML report
 
-Write a self-contained HTML file to the OS temp directory so nothing lands in the repo. Resolve the temp dir from `$TMPDIR`, falling back to `/tmp` (or `%TEMP%` on Windows), and write to `<tmpdir>/architecture-review-<timestamp>.html` so each run gets a fresh file. Present it using the host's supported artifact or HTML preview mechanism and tell the user the absolute path. If no preview exists, provide a file link; open a system browser only when requested.
+Use the host's supported artifact/render mechanism and its output requirements. Otherwise write a self-contained HTML file to the OS temp directory (`$TMPDIR`, else `/tmp`; `%TEMP%` on Windows), using a unique `architecture-review-<timestamp>.html` name. Return a file link if rendering is unavailable; if files cannot be created, give a concise text report with the same evidence and limitations. Do not invent tools or open a system browser unless requested. Save a durable summary in the repository's established location only when requested or already authorized.
 
 Use inline CSS and SVG so the report works offline without external scripts. Choose graph, flow, sequence, or cross-section diagrams to fit each candidate. Each candidate gets a **before/after visualisation**.
 
@@ -44,28 +44,29 @@ For each candidate, render a card with:
 
 - **Files**: which files/modules are involved
 - **Problem**: why the current architecture is causing friction
+- **Evidence and confidence**: a concrete costly change, defect, or code path, with source locations; separate observed friction from inferred benefits and unresolved questions
 - **Solution**: plain English description of what would change
 - **Benefits**: explained in terms of locality and leverage, and how tests would improve
+- **Migration**: qualitative effort, compatibility/ownership risks, and the first independently verifiable step; name the behavior and regression coverage that must survive
 - **Before / After diagram**: side-by-side, custom-drawn, illustrating the shallowness and the deepening
 - **Recommendation strength**: one of `Strong`, `Worth exploring`, `Speculative`, rendered as a badge
 
-End the report with a **Top recommendation** section: which candidate you'd tackle first and why.
+End with the top recommendation and why its expected benefit justifies its effort and risk over leaving the structure alone. Reserve `Strong` for concrete supporting evidence and a credible migration path; explain what evidence would strengthen a speculative candidate.
 
-**Use GLOSSARY.md vocabulary for the domain, and the `/codebase-design` vocabulary for the architecture.** If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
+Use established domain names and the repository's architectural terms. Connect those concepts to exact code identifiers so readers can locate the evidence; shared vocabulary should clarify the proposal rather than rename the system.
 
 **ADR conflicts**: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Mark it clearly in the card (e.g. a warning callout: _"contradicts ADR-0007, but worth reopening because…"_). Don't list every theoretical refactor an ADR forbids.
 
 See [HTML-REPORT.md](HTML-REPORT.md) for report structure, diagram patterns, and styling guidance.
 
-Do NOT propose interfaces yet. If no justified candidate exists, report that and stop. Otherwise, after the file is written, ask the user: "Which of these would you like to explore?"
+Do not design detailed replacement interfaces or implement code during an audit alone. If no justified candidate exists, report that and stop without manufacturing a refactor. Otherwise ask which candidate to explore, unless the user already selected one or authorized the next step. An architecture recommendation does not by itself authorize implementation.
 
 ### 3. Grilling loop
 
-Once the user picks a candidate, read [grill-me](../grill-me/SKILL.md) to walk the decision tree with them: constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive.
+Once the user picks a candidate, use [grill-me](../grill-me/SKILL.md) when available, or directly resolve consequential open decisions in bounded rounds: constraints, dependencies, the interface shape, and tests that must survive. Do not repeat settled questions or force an interview for an already specified implementation.
 
-Side effects happen inline as decisions crystallize; read [domain-modeling](../domain-modeling/SKILL.md) to keep the domain model current as you go:
+When terminology or decision recording is within the requested scope, use [domain-modeling](../domain-modeling/SKILL.md) when available and follow existing document conventions:
 
-- **Naming a deepened module after a concept not in `GLOSSARY.md`?** Add the term to `GLOSSARY.md`. Create the file lazily if it doesn't exist.
-- **Sharpening a fuzzy term during the conversation?** Update `GLOSSARY.md` right there.
+- **A new or sharpened domain term?** Record the accepted definition in the existing glossary when authorized; keep proposals visibly separate. Do not create or edit repository documents merely because an audit used a new phrase.
 - **User rejects the candidate with a load-bearing reason?** Offer an ADR, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing; skip ephemeral reasons ("not worth it right now") and self-evident ones.
 - **Want to explore alternative interfaces for the deepened module?** Read [codebase-design](../codebase-design/SKILL.md) and use its design-it-twice comparison pattern, with permitted subagents or direct passes.

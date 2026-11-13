@@ -1,0 +1,21 @@
+{
+  "skill_name": "codebase-design",
+  "evals": [
+    {
+      "id": "one-adapter-boundary",
+      "prompt": "Use codebase-design to assess PaymentService from context.json. Is its single adapter enough reason to delete the interface? The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Treat one-adapter guidance as a heuristic, preserve authorization/ownership invariants and domain terms, and assess real caller complexity rather than forcing deletion or adding hypothetical adapters.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "alternative-designs",
+      "prompt": "Compare two practical interface options for this module from context.json. Delegation is unavailable. Do not implement. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Explore distinct direct alternatives with invariants, error/ordering tradeoffs and caller examples; no invented agent APIs, forced new provider, or speculative implementation.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

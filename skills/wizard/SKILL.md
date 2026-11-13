@@ -23,7 +23,7 @@ Work out every manual step the human must take and every value that gets capture
 
 Use requirements already established, then show the ordered stages and where each value goes. Ask only for unresolved choices that affect the procedure. Generate the complete reviewable script before any final execution approval.
 
-**Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a GitHub secret, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
+**Done when:** every stage is named in order, every destination has an explicit project root/env path and GitHub `owner/repo` when applicable, and for each captured value you know where it comes from, where it goes, whether it is secret, and whether it is required.
 
 ### 2. Map each stage's journey
 
@@ -35,11 +35,19 @@ For each stage, write the precise path a human follows: which URL to open, what 
 
 Copy `template.sh` to the target path. Replace the example stage with one `stage` per step, in dependency order. Use the library helpers: `stage`, `say`/`step`, `open_url`, `ask`/`ask_secret`, `write_env`, `set_secret`/`set_var`, `pause`/`confirm`. Set `TOTAL_STAGES` to the number of stages you wrote.
 
+Before the first prompt or browser action, call `configure_destinations` with the resolved absolute project root, an explicit env path (absolute or relative to that root), and the target GitHub `owner/repo` when needed. Pin these values in the generated script from the agreed setup scope, or require explicit runtime arguments for a relocatable script. Never infer destinations from the launch directory. The untouched template requires `/absolute/project/root owner/repo` arguments and exits before doing anything when they are absent. `write_env` rejects an unpinned relative path; GitHub writes require and pass an explicit `--repo`.
+
+`ask` and `ask_secret` require nonempty input by default. Enter preserves an existing nonempty value; EOF fails without assignment, including a partial line. Use the third argument `optional` only for deliberately empty values. A fourth argument can name a defined validator function that accepts the value and returns success/failure; its output is suppressed. Required blank/invalid values stop the stage rather than writing incomplete credentials. If a setup supports clearing a stored value, make that a separate explicit action; Enter is never removal.
+
+Identify the consumer of each `.env` file before writing it. The template supports a conservative **non-expanding dotenv** subset: single-line values in single quotes, or apostrophe-containing values in double quotes when they contain no double quotes or backslashes. It preserves literal spaces, `$`, `#`, Unicode, and backslashes inside single quotes. It rejects multiline values and ambiguous quote/backslash combinations before changing the file. For those values, or consumers that interpolate variables or interpret different escapes, use and round-trip test the project's native serializer instead. Do not source the generated `.env` as shell code or translate dotenv values with shell escaping. Unsupported existing values are not offered as decoded defaults.
+
 Hold the bar the template sets: open the URL before asking for its value, use `ask_secret` for anything secret, `write_env` every persisted value, `set_secret` only the values CI actually needs, and `confirm` before any irreversible action. Each `stage` clears the screen so only the current step is visible: keep a stage to one focused task so nothing the human needs scrolls away. Don't touch the library above the marker.
 
 ### 4. Verify and hand off
 
 - `bash -n <script>`; run `shellcheck` if available.
+- Test helpers from a different launch directory with temporary paths and a stubbed `gh`: confirm only the pinned env file changes, every GitHub write names the intended repo, and blank/EOF/invalid inputs leave saved values intact. Never use live credentials for these tests.
+- Round-trip representative dummy values through the actual `.env` consumer; syntax checks alone cannot establish value preservation. The template can be sourced in isolated helper tests without running its example stages.
 - `chmod +x <script>`.
 - Don't run it end-to-end yourself: it opens browsers and blocks on human input. Trace it statically instead: every value from step 1 is captured and lands where step 1 said, and every `set_secret` name exactly matches a `secrets.*` reference in CI.
 - Tell the user how to run it. If it's a requested repeatable setup path, link it from the README. Commit only when authorized. The generated script is for the human to run in their terminal; never ask them to paste secrets into chat. Use the host's secure secret-input mechanism if a value must be supplied to the agent.

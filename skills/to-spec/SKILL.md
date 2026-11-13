@@ -12,11 +12,15 @@ Discover the issue tracker and labels from repository guidance, remotes, and ava
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
 
-2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
+2. Extract checkable acceptance criteria from the agreed scope. Preserve existing requirement IDs and meanings; otherwise assign stable IDs such as `C1`, `C2`. Describe an observable result and its relevant preconditions, including failure or edge cases only when agreed or established by the existing contract. Do not infer new requirements merely to make coverage look complete. Separate proposed criteria and unresolved blockers from accepted criteria.
+
+Read [acceptance and evidence](references/acceptance-evidence.md) for the compact contract used when requirements pass into tasks, implementation, verification, and review. Keep the source ID when splitting a criterion across tasks; record an explicit mapping if a destination uses different IDs.
+
+3. Sketch out the seams at which you're going to test the feature. Prefer existing seams and the highest useful interface that can observe the agreed behavior. If a new seam materially affects scope, record it as a proposal rather than an accepted decision.
 
 Use test seams already agreed in the conversation. Record a proposed seam as an open question if it materially affects scope; do not turn synthesis into another interview.
 
-3. Write the spec using the template below, matching the project's spec location and conventions. If authorized, publish it to the established issue tracker and return the issue link. Otherwise return the draft path. Distinguish agreed decisions from proposals and unresolved questions; do not invent requirements to fill the template.
+4. Write the spec using the template below, matching the project's spec location and conventions. If authorized, publish it to the established issue tracker and return the issue link. Otherwise return the draft path. Distinguish agreed decisions from proposals and unresolved questions; do not invent requirements to fill the template. Omit inapplicable sections instead of filling them with speculation.
 
 <spec-template>
 
@@ -39,6 +43,14 @@ A numbered list of user stories covering the agreed scope. Each user story shoul
 </user-story-example>
 
 Cover the feature's agreed behavior and meaningful edge cases without adding speculative scope.
+
+## Acceptance Criteria
+
+List the agreed, observable conditions for completion, with stable IDs and a source reference when their origin would otherwise be ambiguous. Reuse IDs already present in the conversation, spec, or issue; do not renumber them when tasks are added or reordered.
+
+For each criterion, record the relevant input or precondition and expected outcome. Include agreed failure behavior, compatibility, rollout, or migration conditions only when they belong to the scope. Link the planned verification in Testing Decisions by ID. A verification plan is not a passing result.
+
+If the available context does not establish checkable criteria, say what remains unresolved below; do not manufacture acceptance to fill this section.
 
 ## Implementation Decisions
 
@@ -63,6 +75,11 @@ A list of testing decisions that were made. Include:
 - A description of what makes a good test (only test external behavior, not implementation details)
 - Which modules will be tested
 - Prior art for the tests (i.e. similar types of tests in the codebase)
+- Which acceptance IDs each planned check covers and what it cannot establish; distinguish checks to run from evidence already observed
+
+## Proposals and Unresolved Questions
+
+Keep suggested behavior, proposed acceptance criteria, and unresolved decisions separate from agreed requirements. For each material blocker, state the affected acceptance IDs (if any) and what decision or evidence is needed. Do not resolve missing product decisions by guessing, and do not start another interview. A blocked criterion retains its ID and remains incomplete.
 
 ## Out of Scope
 

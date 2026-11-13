@@ -2,7 +2,7 @@
 
 ## Good Tests
 
-**Integration-style**: Test through real interfaces, not mocks of internal parts.
+**Integration-style**: Test through the interface that exposes the chosen behavior, using real collaborators where practical.
 
 ```typescript
 // GOOD: Tests observable behavior
@@ -17,17 +17,17 @@ test("user can checkout with valid cart", async () => {
 Characteristics:
 
 - Tests behavior users/callers care about
-- Uses public API only
+- Uses the relevant caller or boundary interface
 - Survives internal refactors
 - Describes WHAT, not HOW
-- One logical assertion per test
+- One coherent behavior per test; several assertions may establish that behavior
 
 ## Bad Tests
 
 **Implementation-detail tests**: Coupled to internal structure.
 
 ```typescript
-// BAD: Tests implementation details
+// BAD when calling this internal method is not part of the contract
 test("checkout calls paymentService.process", async () => {
   const mockPayment = jest.mock(paymentService);
   await checkout(cart, payment);
@@ -35,17 +35,17 @@ test("checkout calls paymentService.process", async () => {
 });
 ```
 
-Red flags:
+Red flags when they do not observe the selected behavioral contract:
 
 - Mocking internal collaborators
 - Testing private methods
 - Asserting on call counts/order
 - Test breaks when refactoring without behavior change
 - Test name describes HOW not WHAT
-- Verifying through external means instead of interface
+- Using a side channel that does not establish the promised behavior
 
 ```typescript
-// BAD: Bypasses interface to verify
+// Weak application-level test: persistence alone does not prove retrievability
 test("createUser saves to database", async () => {
   await createUser({ name: "Alice" });
   const row = await db.query("SELECT * FROM users WHERE name = ?", ["Alice"]);
@@ -59,6 +59,8 @@ test("createUser makes user retrievable", async () => {
   expect(retrieved.name).toBe("Alice");
 });
 ```
+
+These are contextual judgments, not assertion-syntax bans. A migration test should query the real test database to establish constraints and compatibility. A delivery test may assert that retrying the same idempotency key produces one external charge, and an integration protocol may require one boundary operation before another. Use a recording boundary adapter when appropriate; do not assert private helper calls that callers do not depend on. When real database behavior is the contract, an in-memory fake alone cannot verify it.
 
 **Tautological tests**: Expected value restates the implementation, so the test passes by construction.
 

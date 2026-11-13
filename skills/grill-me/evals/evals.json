@@ -1,0 +1,21 @@
+{
+  "skill_name": "grill-me",
+  "evals": [
+    {
+      "id": "bounded-round",
+      "prompt": "Use grill-me on this offline-sync plan. Work from context.json; start with the most important unresolved choices. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Ask a bounded round of independent consequential decisions with recommendations, respect settled choices, investigate available facts, and avoid a seven-question questionnaire or starting dependent implementation.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "accept-and-stop",
+      "prompt": "The user accepts your recommended conflict and deletion policies, defers account switching out of scope, and says to stop the interview. Summarize the decisions using context.json. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Honor stop immediately, preserve agreed/deferred distinctions and existing implementation authorization, and produce a reusable decision summary rather than another round.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

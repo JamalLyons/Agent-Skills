@@ -1,5 +1,7 @@
 # GLOSSARY.md Format
 
+Follow the project's existing glossary location, context structure, and format. This is a default for a new glossary, not a reason to relocate or rewrite an established one. Include agreed meanings; keep proposals visibly separate until resolved, and make changes to accepted definitions explicit.
+
 ## Structure
 
 ```md
@@ -51,10 +53,10 @@ _Avoid_: Client, buyer, account
 - **Ordering ↔ Billing**: Shared types for `CustomerId` and `Money`
 ```
 
-The skill infers which structure applies:
+Discover existing terminology records and repository guidance before choosing a structure. If there is no other convention, infer from these defaults:
 
 - If `GLOSSARY-MAP.md` exists, read it to find contexts
 - If only a root `GLOSSARY.md` exists, single context
-- If neither exists, create a root `GLOSSARY.md` lazily when the first term is resolved
+- If neither exists and no other glossary convention was found, create a root `GLOSSARY.md` lazily when a meaningful term is agreed
 
 When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.

@@ -1,0 +1,6 @@
+{
+  "repository": "example/reports",
+  "number": 12,
+  "body": "Add CSV download for reports.",
+  "status": "superseded by current-export.md"
+}

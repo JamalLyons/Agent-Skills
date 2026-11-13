@@ -1,0 +1,21 @@
+{
+  "feature": "Offline notes sync",
+  "settled": [
+    "Local SQLite store",
+    "No attachments in this release",
+    "User has authorized implementation after design decisions are settled"
+  ],
+  "open": [
+    "Conflict policy",
+    "Deletion semantics",
+    "Account switching",
+    "Sync interval",
+    "Retry policy",
+    "Storage quota",
+    "Cross-device ordering"
+  ],
+  "facts": {
+    "platform": "Flutter mobile",
+    "serverSupportsETags": true
+  }
+}

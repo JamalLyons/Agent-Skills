@@ -1,17 +1,15 @@
 # When to Mock
 
-Mock at **system boundaries** only:
+Prefer test doubles at **system boundaries** when the real dependency is unsuitable for the test:
 
 - External APIs (payment, email, etc.)
 - Databases (sometimes - prefer test DB)
 - Time/randomness
 - File system (sometimes)
 
-Don't mock:
+Avoid replacing internal collaborators just to assert the current implementation's call graph. Who owns the class is not the deciding factor: an adapter you own can still represent a database, clock, filesystem, or delivery boundary. A recording adapter can observe a required external effect, ordering, or idempotency contract.
 
-- Your own classes/modules
-- Internal collaborators
-- Anything you control
+Use a real test dependency when its semantics are under test, such as database constraints, transaction behavior, or migration compatibility. A fake establishes behavior against the fake's contract; add a focused adapter/integration check when compatibility matters.
 
 ## Designing for Mockability
 

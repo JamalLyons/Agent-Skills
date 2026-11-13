@@ -1,0 +1,6 @@
+{
+  "contract": "send_once(message, transport) must retry after a transient error, reuse the same idempotency key, and record success only after acknowledgement.",
+  "existing": "transport is an owned boundary adapter; test suite already uses a fake transport that records external requests.",
+  "constraints": "No network or real messages. User requests test-first implementation in a disposable workspace.",
+  "source": "def send_once(message, transport):\n    return transport.send(message, key=\"new-key\")\n"
+}

@@ -1,0 +1,21 @@
+{
+  "skill_name": "tdd",
+  "evals": [
+    {
+      "id": "contract-side-effects",
+      "prompt": "Use TDD for send_once from context.json. Write runnable local tests and a minimal implementation using a fake transport. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Observe a real red failure for the contract, use independent expected values and ordering/idempotency assertions where observable behavior requires them, then implement a vertical slice; never send real messages.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "runner-unavailable",
+      "prompt": "Use TDD to plan the same fix, but the test runner is unavailable in this environment. Do not claim execution. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Describe focused behavior tests and limitations without inventing red/green results or full-suite success; distinguish proposed tests from observed evidence.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

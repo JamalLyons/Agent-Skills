@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-11-12T19:05:00Z",
+  "request": {"url": "https://forge.example/acme/site/pulls/43", "state": "open", "target": "trunk", "source": "fix-retry", "initial_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "latest_head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "mergeability": "unknown"},
+  "required_checks": ["test", "lint"],
+  "check_runs": [
+    {"name": "test", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "state": "success"},
+    {"name": "lint", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "state": "success"},
+    {"name": "test", "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "state": "pending"},
+    {"name": "lint", "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "state": "pending"}
+  ],
+  "review_policy": {"required_approvals": 1, "dismiss_approvals_on_new_commits": true},
+  "reviews": [{"reviewer": "maintainer", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "state": "dismissed"}],
+  "authorization": {"analysis": true, "monitoring": true, "publication": false, "merge": false},
+  "available_capabilities": ["pinned snapshot reading"],
+  "live_forge_access": false
+}

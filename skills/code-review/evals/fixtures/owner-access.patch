@@ -1,0 +1,17 @@
+diff --git a/export.py b/export.py
+--- a/export.py
++++ b/export.py
+@@ -1,10 +1,11 @@
+ import csv
+ import io
++import json
+ 
+ def export_report(user, report, format="csv"):
+-    if user.id != report.owner_id:
+-        raise PermissionError("owners only")
+     rows = [{"name": row.name, "total": row.total} for row in report.rows]
++    if format == "json":
++        return json.dumps(rows)
+     output = io.StringIO()
+     writer = csv.DictWriter(output, fieldnames=["name", "total"])
+     writer.writeheader()

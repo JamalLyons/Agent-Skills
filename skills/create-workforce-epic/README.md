@@ -1,6 +1,6 @@
 # create-workforce-epic
 
-A cross-agent skill for Claude Code, Codex, and Cursor that turns a large GitHub issue into a queue of PR-sized sub-issues for [`start-issue-workforce`](../start-issue-workforce/). The workflow uses GitHub CLI and Python, so it does not depend on a Claude-specific runtime.
+A provider-neutral skill that turns a large GitHub issue into a queue of PR-sized sub-issues for [`start-issue-workforce`](../start-issue-workforce/). Any skill-capable agent can plan the work. Applying the plan requires the supplied Python helper and authenticated GitHub CLI; neither a particular model nor an agent runtime is required.
 
 You give it an epic, or just describe the work. If no epic issue exists yet, the skill creates one. The agent acts as **tech lead**:
 
@@ -30,6 +30,8 @@ python3 scripts/epic_status.py --repo owner/name --epic 42
 ```
 
 `apply` is idempotent. Each created issue carries a hidden marker with the epic and task key, so a re-run after a failure or lost response reuses what exists instead of duplicating it. It never edits, closes, or re-parents existing issues. The plan format is in [references/plan-format.md](references/plan-format.md), with a complete [example](references/plan.example.json).
+
+Discovery reads all pages. Duplicate markers and drift between existing managed issue sections and the proposed plan stop before writes, including during a dry run. Reconcile the plan or make separately authorized manual issue edits, then rerun validation and the dry run. Closing a duplicate alone does not remove its identity marker; see [recovery guidance](references/github.md).
 
 `epic_status.py` only treats a blocker as finished when a merged PR or a commit closed it (or it is a human task closed as completed). A closed issue with no merged work shows as `check`, not `ready`.
 

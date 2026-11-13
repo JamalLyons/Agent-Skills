@@ -12,8 +12,8 @@ Use `Closes #<n>` only for fully fulfilled acceptance with required evidence; ot
 - <coherent step and accepted commit SHA>
 
 ## Acceptance
-- [x] <criterion and evidence>
-- [ ] <deferred/needs human; exact remaining action>
+- [x] <stable criterion ID, behavior, observed evidence tied to the verified artifact>
+- [ ] <stable criterion ID; deferred/needs human; exact remaining action and evidence limitation>
 
 ## Verification
 - <command>: <actual outcome, relevant evidence>
@@ -26,4 +26,4 @@ Use `Closes #<n>` only for fully fulfilled acceptance with required evidence; ot
 <Material decisions, unresolved concerns, actual stacked PR base if applicable>
 ```
 
-Omit empty sections. Never pre-fill pass marks, invent manual testing, or imply approval/merge. Partial work with unresolved required checks must be an authorized draft and explicitly identified. Use actual PR base/head for the change summary. Publish via a body file; after an ambiguous API result look for the existing PR before retrying. Link immediately through the host's tool after creation/update/push. List every discovered item left unfixed under Outstanding items, including pre-existing defects and verification gaps. File ownership or a proposed destination is not tracking; say “not yet tracked” until required scope/acceptance coverage is confirmed. Refresh after tracker reconciliation and approved follow-up. Never create, edit, or comment on issues without the user's authorization for the specific items and destinations (see section 5 of the skill).
+Omit empty sections. Never pre-fill pass marks, invent manual testing, or imply approval/merge. Partial work with unresolved required checks must be an authorized draft and explicitly identified. Use actual PR base/head for the change summary. Publish via a body file; after an ambiguous API result look for the existing PR before retrying. Link immediately through the host's tool after creation/update/push when available; otherwise return the PR URL. List every discovered item left unfixed under Outstanding items, including pre-existing defects and verification gaps. File ownership or a proposed destination is not tracking; say “not yet tracked” until required scope/acceptance coverage is confirmed. Refresh after tracker reconciliation and approved follow-up. Never create, edit, or comment on issues without the user's authorization for the specific items and destinations (see section 5 of the skill).

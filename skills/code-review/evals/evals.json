@@ -1,0 +1,32 @@
+{
+  "skill_name": "code-review",
+  "evals": [
+    {
+      "id": "correctness-without-spec",
+      "prompt": "Review the attached concurrent-debit.patch and unchanged payments-context.py for regressions. This is a supplied patch review without a live repository or written spec. Do not edit anything.",
+      "expected_output": "Trace the changed withdraw behavior against the unchanged Store. Identify how two concurrent withdrawals can both approve against the same balance and lose one debit, unlike the atomic base method. Continue Correctness and Standards without waiting for a spec. Ground the finding in the supplied artifacts; do not claim live branch identity or executed tests that were unavailable. No edits or external writes.",
+      "files": [
+        "evals/fixtures/concurrent-debit.patch",
+        "evals/fixtures/payments-context.py"
+      ]
+    },
+    {
+      "id": "explicit-source-and-root-cause",
+      "prompt": "Review owner-access.patch using current-export.md as the requirements source. The commit also references the attached older-issue.json. This is a supplied patch review with no live tracker. Review only; do not modify files or post findings.",
+      "expected_output": "Use the explicit current spec ahead of the older issue. Trace C3 and report the removed owner check with a reachable unauthorized-access scenario, tagged Correctness and Spec once rather than duplicated. Do not flag JSON as scope creep. Preserve acceptance IDs, severity-order independent findings, and state the supplied-artifact scope.",
+      "files": [
+        "evals/fixtures/owner-access.patch",
+        "evals/fixtures/current-export.md",
+        "evals/fixtures/older-issue.json"
+      ]
+    },
+    {
+      "id": "untracked-scope-and-suggestions",
+      "prompt": "Review all work in progress in worktree-snapshot.json, including the untracked file. The JSON is a pinned snapshot, not access to a live repository. Report supported findings without changing files.",
+      "expected_output": "Include the untracked handler and trace its route and connection ownership. Report the early-validation-return resource leak, using the supplied lifecycle contract. Do not stop because there is no committed branch diff; do not report the thin adapter as a violation of a contrary heuristic. Keep optional suggestions separate and accurately state snapshot scope.",
+      "files": [
+        "evals/fixtures/worktree-snapshot.json"
+      ]
+    }
+  ]
+}

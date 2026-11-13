@@ -36,15 +36,19 @@ def timestamp(v):
     return n
 
 
-def load_config():
-    cfg = json.loads((HERE.parent / 'config.json').read_text())
+def load_config(path=None):
+    cfg = json.loads(Path(path or HERE.parent / 'config.json').read_text())
+    if not isinstance(cfg, dict) or not isinstance(cfg.get('tiers'), dict):
+        raise ValueError('config needs a tiers object')
     if set(cfg['tiers']) != {'easy', 'hard'}:
         raise ValueError('tiers must be easy and hard')
     for models in cfg['tiers'].values():
+        if not isinstance(models, list):
+            raise ValueError('each tier must be a model list')
         for m in models:
-            if not isinstance(m['provider'], str) or not isinstance(m['model'], str):
+            if not isinstance(m, dict) or not isinstance(m.get('provider'), str) or not m['provider'].strip() or not isinstance(m.get('model'), str) or not m['model'].strip():
                 raise ValueError('invalid model identity')
-            if not isinstance(m['options'], dict):
+            if not isinstance(m.get('options'), dict):
                 raise ValueError('model options must be an object')
     r = cfg['routing']
     for k in ('min_weekly_left_pct', 'min_session_left_pct', 'assumed_left_pct_when_unknown'):
@@ -56,6 +60,36 @@ def load_config():
         if not math.isfinite(float(r[k])) or float(r[k]) <= 0:
             raise ValueError('routing bonuses/hours must be finite and positive')
     return cfg
+
+
+def load_profile(path):
+    """Read explicit local preferences. A profile is neither approval nor availability."""
+    if path is None:
+        return {}
+    profile = json.loads(Path(path).read_text())
+    if not isinstance(profile, dict) or type(profile.get('version')) is not int or profile['version'] != 1:
+        raise ValueError('profile version must be 1')
+    known = {'version', 'config', 'allow_models', 'exclude', 'avoid', 'workflow_preferences'}
+    if set(profile) - known:
+        raise ValueError('unknown profile fields: ' + ', '.join(sorted(set(profile) - known)))
+    for name in ('allow_models', 'exclude', 'avoid'):
+        if name in profile and (not isinstance(profile[name], list) or
+                not all(isinstance(x, str) and x.strip() for x in profile[name])):
+            raise ValueError(f'profile {name} must be a list of nonempty strings')
+    preferences = profile.get('workflow_preferences', {})
+    if not isinstance(preferences, dict) or set(preferences) - {'max_concurrency', 'review_budget', 'publication'}:
+        raise ValueError('invalid workflow_preferences fields')
+    for key in ('max_concurrency', 'review_budget'):
+        if key in preferences and (type(preferences[key]) is not int or preferences[key] < (1 if key == 'max_concurrency' else 0)):
+            raise ValueError(f'profile {key} must be a valid integer')
+    if 'publication' in preferences and preferences['publication'] not in ('local-only', 'propose-pr'):
+        raise ValueError('profile publication must be local-only or propose-pr; neither grants permission')
+    if 'config' in profile:
+        if not isinstance(profile['config'], str) or not profile['config'].strip():
+            raise ValueError('profile config must name a config file')
+        candidate = Path(profile['config']).expanduser()
+        profile['config'] = str(candidate if candidate.is_absolute() else Path(path).resolve().parent / candidate)
+    return profile
 
 
 def observation(used, reset, observed, now):
@@ -132,7 +166,7 @@ def codex_usage(now):
     return max(candidates, key=lambda x: x[0])[1] if candidates else None
 
 
-def snapshot(cfg, sets, now=None):
+def snapshot(cfg, sets, now=None, read_caches=True):
     now = time.time() if now is None else now
     providers = {m['provider'] for models in cfg['tiers'].values() for m in models}
     overrides = dict(cfg.get('usage_overrides') or {})
@@ -140,7 +174,11 @@ def snapshot(cfg, sets, now=None):
     unknown = set(overrides) - providers
     if unknown:
         raise ValueError('unknown override provider: '+', '.join(sorted(unknown)))
-    live = {'claudeAgent': claude_usage(now), 'codex': codex_usage(now)}
+    live = {}
+    if read_caches:
+        for provider, reader in (('claudeAgent', claude_usage), ('codex', codex_usage)):
+            if provider in providers:
+                live[provider] = reader(now)
     out = {}
     for p in sorted(providers):
         s = dict(live.get(p) or {'weekly_left': None, 'session_left': None, 'source': 'unknown'})
@@ -202,20 +240,30 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--steps', default='')
     ap.add_argument('--set', action='append', default=[], metavar='PROVIDER=WEEKLY_PERCENT_LEFT')
-    ap.add_argument('--avoid', action='append', default=[])
-    ap.add_argument('--exclude', action='append', default=[])
+    ap.add_argument('--config', type=Path, help='custom roster/routing JSON; any host-supported provider/model IDs')
+    ap.add_argument('--profile', type=Path, help='explicit local profile JSON; never grants permission')
+    ap.add_argument('--ignore-profile-routing', action='store_true', help='ignore saved model/avoid/exclude constraints for this invocation')
+    ap.add_argument('--read-local-usage', action='store_true', help='opt in to recognized local usage cache reads')
+    ap.add_argument('--avoid', action='append', help='explicit list replaces profile avoid preferences')
+    ap.add_argument('--exclude', action='append', help='explicit list replaces profile exclusions')
     ap.add_argument('--allow-model', action='append', help='repeat capability-approved provider/model')
     ap.add_argument('--json', action='store_true')
     a = ap.parse_args()
     alias = lambda s: ALIASES.get(s.lower(), s)
     try:
-        cfg = load_config()
+        profile = load_profile(a.profile)
+        cfg = load_config(a.config or profile.get('config'))
+        saved = {} if a.ignore_profile_routing else profile
         providers = {m['provider'] for models in cfg['tiers'].values() for m in models}
         sets = {}
         for arg in a.set:
             k, v = arg.split('=', 1)
-            sets[alias(k)] = percent(v.rstrip('%'))
-        avoid, exclude = {alias(p) for p in a.avoid}, {alias(p) for p in a.exclude}
+            sets[k] = percent(v.rstrip('%'))
+        # Exact configured IDs win over convenience aliases, including custom providers.
+        provider_id = lambda p: p if p in providers else alias(p)
+        sets = {provider_id(p): v for p, v in sets.items()}
+        avoid = {provider_id(p) for p in (a.avoid if a.avoid is not None else saved.get('avoid', []))}
+        exclude = {provider_id(p) for p in (a.exclude if a.exclude is not None else saved.get('exclude', []))}
         if (avoid | exclude) - providers:
             raise ValueError('unknown provider in avoid/exclude')
         steps = a.steps.split(',') if a.steps else []
@@ -223,19 +271,23 @@ def main():
         if len(steps) > 1000:
             raise ValueError('at most 1000 advisory steps per invocation')
         roster = {m['provider']+'/'+m['model'] for models in cfg['tiers'].values() for m in models}
-        if a.allow_model and set(a.allow_model)-roster:
+        allowed = a.allow_model if a.allow_model is not None else saved.get('allow_models')
+        if allowed is not None and set(allowed)-roster:
             raise ValueError('allow-model is not in configured roster')
-        snap = snapshot(cfg, sets)
+        snap = snapshot(cfg, sets, read_caches=a.read_local_usage)
         plan, notes = allocate(cfg, snap, steps, avoid, exclude,
-                               set(a.allow_model) if a.allow_model is not None else None)
+                               set(allowed) if allowed is not None else None)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as e:
         ap.error(str(e))
     result = {'usage': snap, 'notes': notes, 'assignments': plan,
+              'workflow_preferences': profile.get('workflow_preferences', {}),
               'advisory': 'Quota estimates, not cost, availability, or authorization guarantees'}
     if a.json:
         print(json.dumps(result, indent=2, allow_nan=False))
     else:
         print(result['advisory'])
+        if result['workflow_preferences']:
+            print('Workflow preferences (not authorization):', json.dumps(result['workflow_preferences']))
         for p, s in snap.items():
             print(p, json.dumps(s, allow_nan=False))
         for p, n in notes.items():

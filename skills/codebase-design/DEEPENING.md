@@ -4,15 +4,15 @@ How to deepen a cluster of shallow modules safely, given its dependencies. Assum
 
 ## Dependency categories
 
-When assessing a candidate for deepening, classify its dependencies. The category determines how the deepened module is tested across its seam.
+When assessing a candidate for deepening, classify its dependencies. The category informs testing and migration; it does not establish that consolidation is worthwhile.
 
 ### 1. In-process
 
-Pure computation, in-memory state, no I/O. Always deepenable: merge the modules and test through the new interface directly. No adapter needed.
+Pure computation, in-memory state, no I/O. Consolidation may be straightforward, with direct tests through the resulting interface. First check whether existing modules express independent invariants, ownership, or reusable concepts; in-process code is not automatically better merged. An adapter is unnecessary unless it serves an actual contract.
 
 ### 2. Local-substitutable
 
-Dependencies that have local test stand-ins (PGLite for Postgres, in-memory filesystem). Deepenable if the stand-in exists. The deepened module is tested with the stand-in running in the test suite. The seam is internal; no port at the module's external interface.
+Dependencies that have local test stand-ins (PGLite for Postgres, in-memory filesystem). A stand-in can make interface tests practical, but first identify behavior it cannot establish, such as production transaction or filesystem semantics. Keep the seam internal when callers do not need it; use real-system checks where compatibility is part of the contract.
 
 ### 3. Remote but owned (Ports & Adapters)
 
@@ -26,7 +26,7 @@ Third-party services (Stripe, Twilio, etc.) you don't control. The deepened modu
 
 ## Seam discipline
 
-- **One adapter means a hypothetical seam. Two adapters means a real one.** Don't introduce a port unless at least two adapters are justified (typically production + test). A single-adapter seam is just indirection.
+- **Justify the seam by its contract.** Real variation is evidence, not an adapter-count rule. One adapter can protect trust, ownership, lifecycle, or compatibility. Two adapters do not make an otherwise unnecessary abstraction useful; do not manufacture a test adapter solely to satisfy a count.
 - **Internal seams vs external seams.** A deep module can have internal seams (private to its implementation, used by its own tests) as well as the external seam at its interface. Don't expose internal seams through the interface just because tests use them.
 
 ## Testing strategy: replace, don't layer
@@ -34,4 +34,6 @@ Third-party services (Stripe, Twilio, etc.) you don't control. The deepened modu
 - Replace tests coupled to removed internals only after new interface tests preserve their meaningful behavioral coverage. Keep independent regression coverage; do not delete tests merely because they are unit tests.
 - Write new tests at the deepened module's interface. The **interface is the test surface**.
 - Tests assert on observable outcomes through the interface, not internal state.
-- Tests should survive internal refactors, since they describe behaviour, not implementation. If a test has to change when the implementation changes, it's testing past the interface.
+- Tests should usually survive internal refactors. When a test changes, inspect whether meaningful behavior or a deliberately tested invariant changed before labeling it implementation-coupled. Keep independent failure-path and regression coverage even when the new interface is harder to exercise precisely.
+
+Before recommending consolidation, identify an actual costly change or defect, the contract that must survive, and a bounded migration path. Keep existing structure when the evidence of benefit is weak or the migration would erase useful isolation. A smaller interface is not itself evidence of lower overall complexity.

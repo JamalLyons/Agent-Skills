@@ -1,0 +1,11 @@
+diff --git a/payments.py b/payments.py
+--- a/payments.py
++++ b/payments.py
+@@ -1,4 +1,6 @@
+ async def withdraw(store, account_id, amount):
+-    if not await store.debit_if_sufficient(account_id, amount):
++    balance = await store.get_balance(account_id)
++    if balance < amount:
+         raise ValueError("insufficient funds")
++    await store.set_balance(account_id, balance - amount)
+     return {"approved": True, "amount": amount}

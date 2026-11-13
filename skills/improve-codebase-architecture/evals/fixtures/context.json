@@ -1,0 +1,26 @@
+{
+  "history": [
+    {
+      "change": "add tax field",
+      "paths": [
+        "billing/PaymentService.ts"
+      ]
+    },
+    {
+      "change": "fix duplicate charge",
+      "paths": [
+        "billing/PaymentService.ts"
+      ]
+    }
+  ],
+  "modules": {
+    "PaymentService": "Small interface, owns idempotency and audit invariants; independently deployed by billing team.",
+    "PaymentClient": "Generated transport adapter used by storefront."
+  },
+  "adr": {
+    "id": "ADR-004",
+    "status": "accepted",
+    "decision": "Billing owns payment data and authorization."
+  },
+  "observations": "No reproduced change friction outside the single owning module."
+}

@@ -1,0 +1,18 @@
+{
+  "question": "Which Widget API should our pinned SDK 2.4 client call?",
+  "sources": [
+    {
+      "url": "https://vendor.invalid/sdk/2.4/api",
+      "kind": "cached first-party documentation",
+      "captured": "2026-11-01",
+      "text": "SDK 2.4: Widget.fetch(id) returns a Widget. getWidget was removed in 2.0."
+    },
+    {
+      "url": "https://vendor.invalid/sdk/1.9/api",
+      "kind": "cached first-party documentation",
+      "captured": "2026-11-01",
+      "text": "SDK 1.9: getWidget(id) returns a Widget."
+    }
+  ],
+  "runtime": "SDK 2.4; network unavailable"
+}

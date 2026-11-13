@@ -1,0 +1,21 @@
+{
+  "skill_name": "to-spec",
+  "evals": [
+    {
+      "id": "traceable-criteria",
+      "prompt": "Use to-spec to turn context.json into a local implementation specification without another interview. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Capture agreed behavior as stable observable acceptance criteria, preserve current-month and header-only requirements, keep timezone unresolved, reference existing seam, and do not publish or add UI changes.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "scope-stays-open",
+      "prompt": "Using the same conversation, create an implementation-ready spec. Do not invent the timezone decision or ask more questions. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Clearly distinguish agreed criteria and blocking uncertainty; do not silently choose a timezone to make the spec appear complete. Do not publish to an unknown tracker.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

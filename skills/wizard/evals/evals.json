@@ -1,0 +1,21 @@
+{
+  "skill_name": "wizard",
+  "evals": [
+    {
+      "id": "pinned-destinations",
+      "prompt": "Use wizard to generate a setup script from context.json. The script might be launched from another directory. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Pin the project/env and GitHub destinations, require valid nonempty secret input, use documented dummy UI path, and provide syntax/static verification without launching browser or publishing secrets.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "unsupported-serialization",
+      "prompt": "Explain how the wizard should handle a value containing both quotes and newlines when the project dotenv consumer is unknown. Do not request a real secret. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Avoid shell escaping or silently mangling the value, stop before writes, require the project-native serializer/consumer decision, and do not ask for credentials in chat.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

@@ -24,7 +24,9 @@ fi
 TOTAL_STAGES=0
 
 _STAGE_INDEX=0
-ENV_FILE="${ENV_FILE:-.env}"
+PROJECT_ROOT="${PROJECT_ROOT:-}"
+ENV_FILE="${ENV_FILE:-}"
+GITHUB_REPO="${GITHUB_REPO:-}"
 WRITTEN_ENV=()    # KEYs written to ENV_FILE this run
 WRITTEN_SECRET=() # secret NAMEs set this run
 SKIPPED=()        # things we couldn't do (e.g. gh missing)
@@ -79,7 +81,7 @@ open_url() {
 # pause "msg" waits for the human to confirm they've done the manual part.
 pause() {
   printf '  %s%s%s ' "$DIM" "${1:-Press Enter to continue}" "$RESET"
-  read -r _ || true
+  read -r _
 }
 
 # confirm "question" is a y/N gate; returns success on yes.
@@ -90,87 +92,182 @@ confirm() {
   [[ "$reply" =~ ^[Yy] ]]
 }
 
-# _existing KEY: current value of KEY in ENV_FILE, if any, with write_env's single
-# quotes or a plain dotenv double-quoted value undone.
+# _dotenv_quote VALUE writes a conservative, non-expanding dotenv literal.
+# This is not shell syntax. Prefer single quotes; double quotes are safe here
+# only without backslashes (some parsers expand \n) or embedded double quotes.
+# Unsupported values require the project's own serializer, never shell escaping.
+_dotenv_quote() {
+  local value="$1"
+  if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+    printf '%s\n' 'dotenv helper does not support multiline values; use the project serializer' >&2
+    return 1
+  fi
+  if [[ "$value" != *\'* ]]; then
+    printf "'%s'" "$value"
+  elif [[ "$value" != *\"* && "$value" != *\\* ]]; then
+    printf '"%s"' "$value"
+  else
+    printf '%s\n' 'dotenv helper cannot represent this quote/backslash combination; use the project serializer' >&2
+    return 1
+  fi
+}
+
+# _existing KEY reads only unambiguous single-line literals; never source .env.
+# A value written by another serializer may require re-entry rather than guessing.
 _existing() {
   [[ -f "$ENV_FILE" ]] || return 1
-  local line value sq="'\\''"; line=$(grep -E "^${1}=" "$ENV_FILE" | tail -n1) || return 1
+  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || return 1
+  local line value
+  line=$(grep -E "^${1}=" "$ENV_FILE" | tail -n1) || return 1
   value="${line#*=}"
-  if [[ "$value" == \'*\' ]]; then value="${value:1:${#value}-2}"; value="${value//"$sq"/\'}"
+  if [[ "$value" == \'*\' ]]; then
+    value="${value:1:${#value}-2}"
+    [[ "$value" != *\'* ]] || return 1
   elif [[ "$value" == \"*\" ]]; then
     value="${value:1:${#value}-2}"
-    [[ "$value" == *[\\\$\"]* ]] && return 1   # escapes, $ or ": can't decode safely; ask again
+    [[ "$value" != *\"* && "$value" != *\\* ]] || return 1
+  else
+    [[ "$value" =~ ^[A-Za-z0-9_./:@%+,=-]*$ ]] || return 1
   fi
   printf '%s' "$value"
 }
 
-# ask KEY "Prompt" reads a value into $KEY. Offers the existing .env value as
-# a default on re-runs (Enter keeps it). Visible input (non-secret), edited
-# with Readline. Fails at EOF with no input.
-ask() {
-  local key="$1" prompt="$2" current input s=$'\001' e=$'\002' p rc=0
+# configure_destinations ROOT ENV_PATH [OWNER/REPO] pins generated destinations.
+# ROOT must already exist and be absolute. Relative ENV_PATH is anchored to ROOT.
+configure_destinations() {
+  local root="$1" env_path="$2" repo="${3:-}"
+  if [[ "$root" != /* || ! -d "$root" ]]; then
+    printf '%s\n' 'project root must be an existing absolute directory' >&2
+    return 1
+  fi
+  if [[ -z "$env_path" ]]; then
+    printf '%s\n' 'an explicit env file path is required' >&2
+    return 1
+  fi
+  if [[ -n "$repo" && ! "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    printf '%s\n' 'GitHub destination must be owner/repo' >&2
+    return 1
+  fi
+  PROJECT_ROOT=$(cd "$root" && pwd -P) || return 1
+  if [[ "$env_path" == /* ]]; then ENV_FILE="$env_path"
+  else ENV_FILE="$PROJECT_ROOT/$env_path"; fi
+  GITHUB_REPO="$repo"
+  _validate_env_destination
+}
+
+# Absolute ENV_FILE is also sufficient for isolated library callers. Never
+# infer it from the launch directory. No directories are created by validation.
+_validate_env_destination() {
+  if [[ "$ENV_FILE" != /* || ! -d "$(dirname "$ENV_FILE")" || -d "$ENV_FILE" ]]; then
+    printf '%s\n' 'set an absolute env file path with an existing parent directory' >&2
+    return 1
+  fi
+}
+
+_validate_github_destination() {
+  if [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    printf '%s\n' 'set an explicit GitHub owner/repo before writing secrets or variables' >&2
+    return 1
+  fi
+}
+
+# ask/ask_secret KEY "Prompt" [required|optional] [validator_function].
+# Enter keeps a saved nonempty value. EOF never commits partial input. A
+# validator receives the value but its output is suppressed to avoid leaks.
+_ask_value() {
+  local key="$1" prompt="$2" hidden="$3" requirement="${4:-required}" validator="${5:-}"
+  local current input="" s=$'\001' e=$'\002' p rc=0
+  if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ || ( "$requirement" != required && "$requirement" != optional ) ]]; then
+    printf '%s\n' 'invalid input name or required/optional mode' >&2
+    return 1
+  fi
+  if [[ -n "$validator" ]] && ! declare -F "$validator" >/dev/null; then
+    printf '%s\n' 'input validator must name a defined function' >&2
+    return 1
+  fi
   current=$(_existing "$key" || true)
-  # Readline needs the colour codes wrapped in \001..\002 to place the cursor.
   p="  $s$BOLD$e$prompt$s$RESET$e "
   [[ -n "$current" ]] && p+="${s}${DIM}${e}[Enter keeps current]${s}${RESET}${e} "
-  read -e -r -p "$p" input || rc=1
-  if (( rc )) && [[ -z "$input" ]]; then return 1; fi
-  [[ -z "$input" && -n "$current" ]] && input="$current"
-  printf -v "$key" '%s' "$input"
-}
-
-# ask_secret KEY "Prompt" is like ask, but input is hidden.
-ask_secret() {
-  local key="$1" prompt="$2" current input rc=0
-  current=$(_existing "$key" || true)
-  if [[ -n "$current" ]]; then
-    printf '  %s%s%s %s[Enter keeps current]%s ' "$BOLD" "$prompt" "$RESET" "$DIM" "$RESET"
-  else
+  if [[ "$hidden" == yes ]]; then
     printf '  %s%s%s ' "$BOLD" "$prompt" "$RESET"
+    [[ -n "$current" ]] && printf '%s' '[Enter keeps current] '
+    read -rs input || rc=1
+    printf '\n'
+  else
+    read -e -r -p "$p" input || rc=1
   fi
-  read -rs input || rc=1
-  printf '\n'
-  if (( rc )) && [[ -z "$input" ]]; then return 1; fi
+  if (( rc )); then
+    printf '%s\n' 'input ended before confirmation; no value changed' >&2
+    return 1
+  fi
   [[ -z "$input" && -n "$current" ]] && input="$current"
+  if [[ "$requirement" == required && -z "$input" ]]; then
+    printf '%s\n' 'a nonempty value is required' >&2
+    return 1
+  fi
+  if [[ -n "$validator" ]] && ! "$validator" "$input" >/dev/null 2>&1; then
+    printf '%s\n' 'value did not pass validation; no value changed' >&2
+    return 1
+  fi
   printf -v "$key" '%s' "$input"
 }
 
-# write_env KEY VALUE upserts KEY='VALUE' into ENV_FILE (replaces any existing
-# line) and sets $KEY. Idempotent. Creates ENV_FILE at mode 0600; writes through
-# a symlink and keeps an existing file's mode.
+ask() { _ask_value "$1" "$2" no "${3:-required}" "${4:-}"; }
+ask_secret() { _ask_value "$1" "$2" yes "${3:-required}" "${4:-}"; }
+
+# write_env KEY VALUE upserts an unambiguous dotenv literal and sets $KEY.
+# Validate/serialize before touching ENV_FILE. Creates it at mode 0600; writes
+# through a symlink and keeps an existing file's mode. This file must not be sourced.
 write_env() {
-  local key="$1" value="$2" tmp sq="'\\''"
+  local key="$1" value="$2" encoded
+  if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    printf '%s\n' 'invalid dotenv key' >&2
+    return 1
+  fi
+  encoded=$(_dotenv_quote "$value") || return 1
+  _validate_env_destination || return 1
   [[ -e "$ENV_FILE" ]] || (umask 077 && : > "$ENV_FILE")
-  tmp=$(mktemp)
-  grep -vE "^${key}=" "$ENV_FILE" > "$tmp" || true
-  printf "%s='%s'\n" "$key" "${value//\'/$sq}" >> "$tmp"
-  cat "$tmp" > "$ENV_FILE"
-  rm -f "$tmp"
+  _write_env_file "$key" "$encoded" || return 1
   printf -v "$key" '%s' "$value"
   WRITTEN_ENV+=("$key")
   printf '  %s✓ wrote%s %s → %s\n' "$GREEN" "$RESET" "$key" "$ENV_FILE"
 }
 
+# A subshell scopes cleanup traps so callers' signal handlers are preserved.
+_write_env_file() (
+  local key="$1" encoded="$2" tmp rc=0
+  tmp=$(mktemp) || return 1
+  trap 'rm -f "$tmp"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  grep -vE "^${key}=" "$ENV_FILE" > "$tmp" || rc=$?
+  if (( rc > 1 )); then return "$rc"; fi
+  printf '%s=%s\n' "$key" "$encoded" >> "$tmp" || return 1
+  cat "$tmp" > "$ENV_FILE"
+)
+
 # set_secret NAME VALUE sets a GitHub Actions repo secret via gh. Falls back
 # to a warning (and records it) if gh is unavailable or unauthenticated.
 set_secret() {
   local name="$1" value="$2"
+  _validate_github_destination || return 1
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    if printf '%s' "$value" | gh secret set "$name" >/dev/null 2>&1; then
+    if printf '%s' "$value" | gh secret set "$name" --repo "$GITHUB_REPO" >/dev/null 2>&1; then
       WRITTEN_SECRET+=("$name")
       printf '  %s✓ set%s GitHub secret %s\n' "$GREEN" "$RESET" "$name"
       return
     fi
   fi
-  SKIPPED+=("GitHub secret $name (set it manually: gh secret set $name)")
+  SKIPPED+=("GitHub secret $name (set it manually: gh secret set $name --repo $GITHUB_REPO)")
   warn "skipped GitHub secret $name: gh not ready; set it later"
 }
 
 # set_var NAME VALUE sets a GitHub Actions repo variable (non-secret).
 set_var() {
   local name="$1" value="$2"
+  _validate_github_destination || return 1
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    if gh variable set "$name" --body "$value" >/dev/null 2>&1; then
+    if gh variable set "$name" --repo "$GITHUB_REPO" --body "$value" >/dev/null 2>&1; then
       printf '  %s✓ set%s GitHub variable %s\n' "$GREEN" "$RESET" "$name"
       return
     fi
@@ -182,7 +279,11 @@ set_var() {
 # finish clears, then shows a closing summary of everything configured.
 finish() {
   _clear
-  printf '\n%s%s  ✓ Setup complete%s\n' "$BOLD" "$GREEN" "$RESET"
+  if (( ${#SKIPPED[@]} )); then
+    printf '\n%s%s  Setup incomplete%s\n' "$BOLD" "$YELLOW" "$RESET"
+  else
+    printf '\n%s%s  ✓ Setup complete%s\n' "$BOLD" "$GREEN" "$RESET"
+  fi
   (( ${#WRITTEN_ENV[@]} ))    && note "wrote ${#WRITTEN_ENV[@]} value(s) to $ENV_FILE: ${WRITTEN_ENV[*]}"
   (( ${#WRITTEN_SECRET[@]} )) && note "set ${#WRITTEN_SECRET[@]} GitHub secret(s): ${WRITTEN_SECRET[*]}"
   if (( ${#SKIPPED[@]} )); then
@@ -195,12 +296,20 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 # STAGES: author this section. One stage() per step the human takes.
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
-# Keep every stage inside run_wizard and the last line as is: bash then parses
-# the whole file before the first prompt, so an edit mid-run can't break it.
+# Keep every stage inside run_wizard and preserve the final execution guard:
+# bash parses the function before the first prompt; sourcing only loads helpers.
 # ──────────────────────────────────────────────────────────────────────────
 
 run_wizard() {
 
+# The template itself requires explicit destinations before opening a browser.
+# In a generated script, author this call with the resolved project root and
+# owner/repo for the requested setup; never use pwd or guess from the caller.
+if [[ $# -ne 2 ]]; then
+  printf 'Usage: bash %s /absolute/project/root owner/repo\n' "$0" >&2
+  return 2
+fi
+configure_destinations "$1" '.env' "$2"
 TOTAL_STAGES=1
 
 banner "Stripe setup"
@@ -221,4 +330,7 @@ set_secret STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"   # CI needs this one
 finish
 }
 
-run_wizard "$@"; exit
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  run_wizard "$@"
+  exit
+fi

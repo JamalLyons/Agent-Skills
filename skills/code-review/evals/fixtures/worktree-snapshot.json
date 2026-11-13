@@ -1,0 +1,9 @@
+{
+  "head": "fixture-base",
+  "tracked_diff": "diff --git a/routes.py b/routes.py\n--- a/routes.py\n+++ b/routes.py\n@@ -1 +1,2 @@\n-def health(): return \"ok\"\n+from new_handler import handle\n+ROUTES = {\"/submit\": handle}\n",
+  "untracked_files": {
+    "new_handler.py": "def handle(pool, request):\n    connection = pool.acquire()\n    if not request.get(\"name\"):\n        return {\"status\": 400}\n    try:\n        connection.execute(\"INSERT INTO names VALUES (?)\", (request[\"name\"],))\n        return {\"status\": 201}\n    finally:\n        pool.release(connection)\n"
+  },
+  "unchanged_context": "pool.acquire transfers exclusive connection ownership to the caller. The caller must release it on every return path. There is no finalizer or automatic request cleanup. ROUTES is the active request dispatch table.",
+  "CONTRIBUTING.md": "Thin adapters are an accepted way to connect routes to handlers. SQL values must be parameterized."
+}

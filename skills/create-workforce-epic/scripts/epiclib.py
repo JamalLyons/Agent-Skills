@@ -72,14 +72,42 @@ def _path_prefix(path: str) -> str:
         i = path.find(ch)
         if i != -1:
             cut = min(cut, i)
-    return path[:cut].rstrip('/')
+    # Keep a trailing slash: "src/*" cannot intersect the sibling "src2".
+    return path[:cut]
 
 
 def paths_overlap(a: str, b: str) -> bool:
+    """Conservatively compare repository-relative files, directories and globs.
+
+    Literals own their descendants too. Globs use their mandatory literal
+    prefix; intersecting prefixes are a potential collision, even if later
+    pattern characters might prove them disjoint. This covers future files
+    without enumerating the filesystem or guessing whether a literal is a
+    file or directory. A root, bare glob, or non-repository-relative path
+    cannot establish disjoint ownership and therefore overlaps everything.
+    """
+    import posixpath
+
+    paths = []
+    for path in (a, b):
+        path = path.replace('\\', '/')
+        if path.startswith('/') or re.match(r'^[A-Za-z]:', path) or '..' in path.split('/'):
+            return True
+        paths.append(posixpath.normpath(path))
+    a, b = paths
+    if a == '.' or b == '.':
+        return True
     pa, pb = _path_prefix(a), _path_prefix(b)
     if not pa or not pb:
-        return True          # a bare glob or repo root overlaps everything
-    return pa == pb or pa.startswith(pb + '/') or pb.startswith(pa + '/')
+        return True
+    a_glob, b_glob = pa != a, pb != b
+    if a_glob and b_glob:
+        return pa.startswith(pb) or pb.startswith(pa)
+    if a_glob:
+        return b.startswith(pa) or pa.startswith(b + '/')
+    if b_glob:
+        return a.startswith(pb) or pb.startswith(a + '/')
+    return a == b or a.startswith(b + '/') or b.startswith(a + '/')
 
 
 def _topo_order(keys: list[str], deps: dict[str, list[str]]) -> tuple[list[str], list[str]]:
@@ -463,7 +491,15 @@ class Gh:
             raise GhError(status, str(msg))
         return data
 
-    def paginate(self, path: str, limit: int = 1000) -> list:
+    def paginate(self, path: str, limit: int | None = None) -> list:
+        """Return the complete result set, or fail rather than return a partial list.
+
+        An optional caller-supplied bound limits discovery, not its correctness:
+        exceeding it raises even when earlier pages were fetched successfully.
+        A full final page needs one further request to establish exhaustion.
+        """
+        if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or limit < 1):
+            raise ValueError('pagination limit must be a positive integer or None')
         sep = '&' if '?' in path else '?'
         out: list = []
         page = 1
@@ -472,7 +508,9 @@ class Gh:
             if not isinstance(chunk, list):
                 raise GhError(None, f'expected a list from {path}')
             out += chunk
-            if len(chunk) < 100 or len(out) >= limit:
+            if limit is not None and len(out) > limit:
+                raise GhError(None, f'discovery incomplete for {path}: pagination limit {limit} exceeded')
+            if len(chunk) < 100:
                 return out
             page += 1
 

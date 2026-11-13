@@ -1,0 +1,9 @@
+{
+  "module": "PaymentService",
+  "interface": [
+    "charge(orderId, idempotencyKey)",
+    "refund(paymentId, amount)"
+  ],
+  "implementation": "Owns payment invariants and audit events behind a single third-party adapter. Billing team owns it independently. No second provider is planned.",
+  "constraint": "Do not rename established Service/API terms. Current authorization and audit boundary must remain."
+}

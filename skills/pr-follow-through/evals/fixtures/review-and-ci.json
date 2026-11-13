@@ -1,0 +1,10 @@
+{
+  "captured_at": "2026-11-12T19:00:00Z",
+  "request": {"url": "https://forge.example/acme/site/merge-requests/42", "state": "open", "target": "release", "source": "greeting-fallback", "head": "1111111111111111111111111111111111111111"},
+  "requirements": [{"id": "C2", "text": "Unsupported locale codes return the existing English greeting."}],
+  "reviews": [{"id": "R7", "head": "1111111111111111111111111111111111111111", "blocking": true, "body": "greeting('es') raises rather than returning the fallback in C2."}],
+  "checks": [{"name": "locale-contract", "head": "1111111111111111111111111111111111111111", "required": true, "state": "failed", "command": "python3 -c \"from renderer import greeting; assert greeting('es') == 'Welcome'\"", "log": "KeyError: 'es'"}],
+  "local_snapshot": {"unrelated_staged_paths": ["notes/private-draft.md"], "fixture_directory_is_not_live_checkout": true},
+  "available_capabilities": ["local synthetic files", "Python standard library"],
+  "live_forge_access": false
+}

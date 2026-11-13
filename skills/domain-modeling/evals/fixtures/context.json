@@ -1,0 +1,16 @@
+{
+  "docs": {
+    "terminologyPath": "docs/product/terms.md",
+    "decisionsPath": "architecture/decisions",
+    "terms": {
+      "Customer": "The contracting organization",
+      "User": "A person who signs in"
+    },
+    "decision": {
+      "status": "accepted",
+      "name": "Organization owns billing",
+      "reason": "Invoices are issued per contract"
+    }
+  },
+  "conversation": "By account I mean the contracting organization, not a person. We are considering renaming it Workspace, but have not agreed."
+}

@@ -1,29 +1,22 @@
 """Check discoverable skill packages and real installer behavior without user state."""
 from pathlib import Path
-import re
+import importlib.util
 import subprocess
 import tempfile
 import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 SKILLS = sorted(p for p in (REPO / "skills").iterdir() if (p / "SKILL.md").is_file())
+spec = importlib.util.spec_from_file_location('validate_skills', REPO / 'scripts/validate_skills.py')
+validator = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(validator)
 
 
 class PackagingTests(unittest.TestCase):
     def test_skill_identity_and_local_resources(self):
         for skill in SKILLS:
             with self.subTest(skill=skill.name):
-                text = (skill / "SKILL.md").read_text()
-                frontmatter = text.split("---", 2)[1]
-                self.assertRegex(frontmatter, rf"(?m)^name: {re.escape(skill.name)}$")
-                self.assertRegex(frontmatter, r"(?m)^description: .+")
-                for doc in skill.rglob("*.md"):
-                    prose = re.sub(r"(?ms)^```.*?^```[^\n]*", "", doc.read_text())
-                    for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", prose):
-                        if "://" in target or target.startswith("#"):
-                            continue
-                        target = target.split("#", 1)[0]
-                        self.assertTrue((doc.parent / target).exists(), f"{doc}: {target}")
+                validator.validate_skill(skill)
 
     def test_install_all_resources_twice_and_prune_deleted_skill(self):
         with tempfile.TemporaryDirectory() as tmp:

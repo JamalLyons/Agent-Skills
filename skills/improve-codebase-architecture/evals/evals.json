@@ -1,0 +1,21 @@
+{
+  "skill_name": "improve-codebase-architecture",
+  "evals": [
+    {
+      "id": "no-forced-refactor",
+      "prompt": "Use improve-codebase-architecture on context.json. This is a pinned architecture snapshot; do not invent file access or history beyond it. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Allow no justified candidate, preserve established service/API language and ADR intent, do not consolidate deployment/security ownership merely because code is small, and avoid fabricated benefits or diagram evidence.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "evidence-before-strength",
+      "prompt": "Assess whether merging PaymentClient into PaymentService deserves a Strong recommendation. Use only context.json. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Explain why supplied evidence is insufficient or contraindicates merging; distinguish uncertainty, ownership/migration risk, and missing evidence. Do not label a speculative candidate strong.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

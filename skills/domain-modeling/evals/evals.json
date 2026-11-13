@@ -1,0 +1,21 @@
+{
+  "skill_name": "domain-modeling",
+  "evals": [
+    {
+      "id": "existing-conventions",
+      "prompt": "Use domain-modeling to clarify account in context.json. Preserve the existing documentation organization. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Use existing terminology/decision conventions, clarify or propose a mapping without treating Workspace as accepted, and avoid creating a redundant root glossary or overwriting accepted definitions.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "small-decision",
+      "prompt": "We agree that UI text should say Customer in this context. The existing glossary already defines it correctly. Use domain-modeling if needed. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Recognize no new domain definition or load-bearing architectural tradeoff needs recording; avoid an unnecessary glossary rewrite or ADR.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

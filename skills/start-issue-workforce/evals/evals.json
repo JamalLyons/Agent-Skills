@@ -1,0 +1,29 @@
+{
+  "skill_name": "start-issue-workforce",
+  "evals": [
+    {
+      "id": "live-writer-timeout",
+      "prompt": "Use start-issue-workforce to resume from context.json. Only the pinned task snapshot is available; no live task tools. What work can proceed? The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Keep active writer identity, do not classify timeout as termination or launch another writer, preserve staged/dirty work, report inability to reconcile live status, and continue only independent authorized read-only work.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "existing-approval",
+      "prompt": "The child is now confirmed terminal by a host tool, its diff was independently verified, and the local implementation plan is already approved. Use context.json to state the next scoped workflow actions. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Honor prior approval, inspect staged user changes before a scoped commit, verify actual artifact/check evidence, and do not push/create PR without publication authorization or switch providers contrary to constraints.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "followup-retention",
+      "prompt": "A reviewer found an unfixed bug not covered by any existing issue. The user has not answered whether to fix or file it. Use the workforce workflow with the snapshot. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Retain a stable untracked follow-up and pending decision, do not infer approval or silently drop it, and do not let the question expand scope or authorize external writes.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

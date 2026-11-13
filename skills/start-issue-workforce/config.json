@@ -1,5 +1,5 @@
 {
-  "_comment": "Model roster and advisory routing estimates, not availability or measured cost. usage_overrides: weekly percent LEFT; remove/update stale values. Overrides preserve known session limits. Validate models/options against host capabilities. Read by scripts/route.py.",
+  "_comment": "Illustrative model roster and advisory routing estimates; not a required provider set, availability, or measured cost. Use --config for any host-supported roster. usage_overrides: weekly percent LEFT; remove/update stale values. Overrides preserve known session limits. Validate models/options against host capabilities. Read by scripts/route.py.",
   "tiers": {
     "easy": [
       { "model": "gemini-3.8-flash", "provider": "antigravity", "options": { "thinking_level": "high" } },

@@ -11,7 +11,7 @@ Expected base SHA/branch: <identities; report mismatch before edits>
 
 Context: <overall goal, accepted prerequisite interfaces and paths>
 Task: <specific outcome>
-Acceptance: <checkable behavior, relevant edge cases, required evidence>
+Acceptance: <stable source criterion IDs, checkable behavior, relevant edge cases, required evidence>
 Owned paths: <files/globs; coordinate before touching shared paths>
 Read first: <code and applicable repo instructions>
 Out of scope: <reserved files, unrelated changes, external actions>
@@ -32,7 +32,7 @@ Commit policy (select one):
 If the brief conflicts with actual code, report the mismatch rather than redesigning broadly.
 If a tool/permission/platform is unavailable, distinguish it from a code failure.
 Return: status (complete/partial/blocked), actual checkout/base/head, changed files,
-commands actually run with exit statuses and concise results, acceptance evidence,
+commands actually run with exit statuses and concise results, criterion IDs mapped to actual artifact/verification evidence and limitations,
 assumptions/uncertainties, and remaining work. A claimed pass is subject to lead verification.
 ```
 

@@ -15,18 +15,84 @@ Exit codes: 0 ok, 1 GitHub/runtime failure, 2 invalid plan or usage.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
+import re
 import sys
 import time
 from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from epiclib import (EXTERNAL_RE, Gh, GhError, Plan, PlanError, load_plan,  # noqa: E402
+from epiclib import (EPIC_MARKER_RE, MARKER_RE, EXTERNAL_RE, Gh, GhError, Plan, PlanError, load_plan,  # noqa: E402
                      parse_epic_marker, parse_marker, render_body, render_epic_body)
 
 LABEL_COLOR = '5319e7'
 LABEL_DESC = 'Task issue created by create-workforce-epic'
+MANAGED_SECTIONS = {'Preamble', 'Summary', 'Background', 'Scope', 'Out of scope',
+                    'Owned paths', 'Acceptance criteria', 'Verification',
+                    'Epic criteria covered', 'Dependencies', 'Notes', 'Tasks'}
+
+
+def managed_sections(body: str) -> dict[str, str]:
+    """Read sections without treating headings inside code as sections.
+
+    Return custom headings too: plan fields may contain them. The comparison
+    determines which extra sections are generated and which are appended notes.
+    """
+    sections: dict[str, list[str]] = {'Preamble': []}
+    current, fence = 'Preamble', None
+    body = MARKER_RE.sub('', EPIC_MARKER_RE.sub('', body or ''))
+    for line in body.replace('\r\n', '\n').splitlines():
+        mark = re.match(r'^\s*(`{3,}|~{3,})', line)
+        if mark:
+            token = mark.group(1)
+            if fence is None:
+                fence = token
+            elif token[0] == fence[0] and len(token) >= len(fence):
+                fence = None
+        heading = re.match(r'^## (.+?)\s*$', line) if fence is None else None
+        if heading:
+            current = heading.group(1)
+            sections.setdefault(current, [])
+        else:
+            sections[current].append(line.rstrip())
+    result = {}
+    for name, lines in sections.items():
+        content = '\n'.join(lines).strip()
+        if name in {'Acceptance criteria', 'Epic criteria covered'}:
+            content = re.sub(r'(?m)^- \[[xX]\] ', '- [ ] ', content)
+        if content:
+            result[name] = content
+    return result
+
+
+def body_drift(current: str, proposed: str, root: bool = False,
+               dependency_aliases: dict[str, str] | None = None) -> dict:
+    existing, expected = managed_sections(current), managed_sections(proposed)
+    generated_names = MANAGED_SECTIONS | expected.keys()
+    # Custom headings in proposed fields are generated content. Interior extra
+    # sections in the current body may also be removed generated content; keep
+    # them in the comparison. Only trailing, otherwise unknown notes are ignored.
+    last_generated = max((i for i, name in enumerate(existing) if name in generated_names), default=-1)
+    existing = {name: value for i, (name, value) in enumerate(existing.items())
+                if name in generated_names or i < last_generated}
+    changes = {}
+    parser = parse_epic_marker if root else parse_marker
+    if parser(current) != parser(proposed):
+        changes['Marker'] = {'current': json.dumps(parser(current), sort_keys=True),
+                             'proposed': json.dumps(parser(proposed), sort_keys=True)}
+    for section in sorted(existing.keys() | expected.keys()):
+        before, after = existing.get(section, ''), expected.get(section, '')
+        if section == 'Dependencies' and before.startswith('Blocked by ') and after.startswith('Blocked by '):
+            aliases = dependency_aliases or {}
+            def refs(value):
+                return sorted(aliases.get(x.strip(), x.strip()) for x in value[11:].split(','))
+            if refs(before) == refs(after):
+                continue
+        if before != after:
+            changes[section] = {'current': before, 'proposed': after}
+    return changes
 
 
 class Applier:
@@ -40,6 +106,8 @@ class Applier:
         self.sub_ids: set[int] = set()
         self.deps_supported = True
         self.epic_created = False
+        self.existing_epic: dict | None = None
+        self.drift: list[dict] = []
 
     # -- helpers
     def _act(self, kind: str, key: str | None, detail: str, done: bool) -> None:
@@ -72,6 +140,7 @@ class Applier:
         self.sub_ids = {s['id'] for s in subs}
         self.find_tasks(subs, labelled)
         self.check_external_blockers()
+        self.check_scope_drift()
 
     def check_epic(self, epic: dict) -> None:
         if 'pull_request' in epic:
@@ -86,9 +155,14 @@ class Applier:
                  and (parse_epic_marker(i.get('body')) or {}).get('key') == spec['key']]
         if len(roots) > 1:
             raise PlanError([f'epic key "{spec["key"]}" already exists as several issues: '
-                             + ', '.join(f'#{i["number"]}' for i in roots) + '; close the extras first'])
+                             + ', '.join(f'#{i["number"]}' for i in roots)
+                             + '; closing extras does not resolve marker identity. With explicit authorization, '
+                             'choose the canonical epic and rename only the extras\' workforce-epic-root '
+                             'markers to workforce-epic-root-superseded; preserve their content. '
+                             'See references/github.md, Duplicate-marker recovery, then dry-run again'])
         if roots:
             self.check_epic(roots[0])
+            self.existing_epic = roots[0]
             self.plan.epic = roots[0]['number']
             if roots[0].get('title') != spec['title']:
                 self.warnings.append(f'epic #{self.plan.epic} title differs from the plan; not edited')
@@ -124,12 +198,16 @@ class Applier:
         dupes = {k: v for k, v in found.items() if len(v) > 1}
         if dupes:
             raise PlanError([f'task {k} already exists as several issues: '
-                             + ', '.join(f'#{i["number"]}' for i in v) + '; close the extras first'
+                             + ', '.join(f'#{i["number"]}' for i in v)
+                             + '; closing extras does not resolve marker identity. With explicit authorization, '
+                             'choose the canonical task and rename only the extras\' workforce-epic '
+                             'markers to workforce-epic-superseded; preserve their content. '
+                             'See references/github.md, Duplicate-marker recovery, then dry-run again'
                              for k, v in dupes.items()])
         keys = set(self.plan.by_key)
         for k, (issue,) in found.items():
             if k in keys:
-                self.issues[k] = {f: issue.get(f) for f in ('number', 'id', 'title', 'state')}
+                self.issues[k] = {f: issue.get(f) for f in ('number', 'id', 'title', 'state', 'body')}
             else:
                 self.warnings.append(f'#{issue["number"]} has marker task {k}, which is not in this plan; left alone')
         for k, i in self.issues.items():
@@ -137,6 +215,41 @@ class Applier:
                 self.warnings.append(f'task {k} (#{i["number"]}) title differs from the plan; not edited')
             if i['state'] != 'open':
                 self.warnings.append(f'task {k} (#{i["number"]}) is already closed')
+
+    def check_scope_drift(self) -> None:
+        candidates = []
+        aliases = {key: key for key in self.plan.by_key}
+        aliases.update({f'{key} (new)': key for key in self.plan.by_key})
+        aliases.update({f'#{issue["number"]}': key for key, issue in self.issues.items()})
+        if self.existing_epic and self.plan.epic_spec:
+            candidates.append(('epic', self.existing_epic, self.plan.epic_spec['title'],
+                               render_epic_body(self.plan), True))
+        for key, issue in self.issues.items():
+            task = self.plan.by_key[key]
+            refs = {b: self._ref(b) for b in task['blocked_by']}
+            candidates.append((key, issue, task['title'], render_body(self.plan, task, refs), False))
+        for key, issue, title, proposed, root in candidates:
+            changes = body_drift(issue.get('body') or '', proposed, root=root,
+                                 dependency_aliases=aliases)
+            if issue['title'] != title:
+                changes['Title'] = {'current': issue['title'], 'proposed': title}
+            if changes:
+                self.drift.append({'task': key, 'issue': issue['number'], 'sections': changes})
+        if self.drift:
+            errors = []
+            for item in self.drift:
+                label = f'{item["task"]} (#{item["issue"]})'
+                errors.append(f'scope drift in {label}: ' + ', '.join(item['sections']))
+                for section, values in item['sections'].items():
+                    diff = '\n'.join(difflib.unified_diff(values['current'].splitlines(),
+                                     values['proposed'].splitlines(),
+                                     fromfile=f'{label} current {section}',
+                                     tofile=f'{label} proposed {section}', lineterm=''))
+                    self.log(diff)
+            errors.append('No writes were made. Retain existing scope by aligning the local plan, '
+                          'or make separately authorized manual issue edits preserving markers and human text. '
+                          'Then validate and dry-run again; apply never edits existing bodies or titles.')
+            raise PlanError(errors)
 
     def check_external_blockers(self) -> None:
         for t in self.plan.tasks:
@@ -271,6 +384,7 @@ class Applier:
             'executed': self.execute,
             'tasks': {k: self.issues[k]['number'] for k in self.plan.order if k in self.issues},
             'actions': self.actions, 'warnings': self.warnings,
+            'scope_reconciled': not self.drift, 'drift': self.drift,
         }
 
 

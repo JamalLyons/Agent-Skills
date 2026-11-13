@@ -1,0 +1,33 @@
+{
+  "skill_name": "bug-investigation",
+  "evals": [
+    {
+      "id": "zero-limit-fix",
+      "prompt": "Investigate and fix the search failure described in evals/fixtures/search-report.md using the attached local files. Work only in the disposable fixture. Reproduce the behavior, make a bounded correction, and verify the result; do not publish anything.",
+      "expected_output": "Run the existing tests and reproduce zero-limit behavior with actual evidence. Distinguish the cache suggestion from the local path and identify the falsey-limit branch as the cause. Add a meaningful zero-limit regression, observe it fail before correction, preserve None/unbounded, positive-limit ordering, and negative-limit behavior, then rerun targeted checks. Make only a bounded local fix, report actual commands and limitations, and do not claim live API verification or publication.",
+      "files": [
+        "evals/fixtures/catalog.py",
+        "evals/fixtures/test_catalog.py",
+        "evals/fixtures/search-report.md"
+      ]
+    },
+    {
+      "id": "diagnose-only",
+      "prompt": "Diagnose the search issue in evals/fixtures/search-report.md and propose the smallest correction. I want an explanation only; do not change the supplied files, add tests, or publish anything. You may run non-mutating local experiments.",
+      "expected_output": "Use a focused local experiment or clearly labeled inspection to explain why zero differs from None and a positive limit. Separate observed results from inference and give a correction direction plus a proposed regression check. Respect diagnosis-only scope: leave fixture source/tests byte-for-byte unchanged, do not publish, and do not claim an unimplemented fix passed.",
+      "files": [
+        "evals/fixtures/catalog.py",
+        "evals/fixtures/test_catalog.py",
+        "evals/fixtures/search-report.md"
+      ]
+    },
+    {
+      "id": "unavailable-device",
+      "prompt": "Investigate the intermittent duplicate-measurement report in evals/fixtures/device-context.json. Only the attached evidence is available. Explain what is established and the next useful observation; do not edit anything or contact external services.",
+      "expected_output": "Do not claim the failure was reproduced or fixed from passing unit tests and an unavailable device. Keep transport redelivery, storage deduplication, and rendering as hypotheses rather than a proven cause; propose a discriminating observation using measurement IDs and reconnect ordering. State the missing runtime/access and a bounded next action, without inventing tools, sessions, logs, code changes, or external actions.",
+      "files": [
+        "evals/fixtures/device-context.json"
+      ]
+    }
+  ]
+}

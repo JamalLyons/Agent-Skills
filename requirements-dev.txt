@@ -1,0 +1,2 @@
+# Development checks only. Skills and their runtime helpers do not require PyYAML.
+PyYAML>=6.0.2,<7

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Start Issue Workforce"
+  short_description: "Implement scoped issues with verified delivery"

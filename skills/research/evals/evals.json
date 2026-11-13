@@ -1,0 +1,21 @@
+{
+  "skill_name": "research",
+  "evals": [
+    {
+      "id": "pinned-version",
+      "prompt": "Research the Widget API question in context.json using these cached sources only. Write a concise local Markdown note. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Use the source matching SDK 2.4, distinguish cached first-party evidence from current live verification, cite version/source, state the conclusion and limits, and stop once the question is answered.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "missing-evidence",
+      "prompt": "Research whether Widget.fetch retries 429 responses. The attached sources are the only available evidence; do not browse. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Identify the missing evidence; do not infer retry behavior from a method name or invent citations. Save a bounded useful finding with the unresolved question.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    }
+  ]
+}

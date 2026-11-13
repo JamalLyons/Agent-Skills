@@ -1,0 +1,16 @@
+{
+  "projectRoot": "/fixture/checkout",
+  "githubRepo": "fixture/widgets",
+  "envFile": "/fixture/checkout/.env",
+  "required": "WIDGET_TOKEN",
+  "uiSnapshot": {
+    "url": "https://vendor.invalid/settings/tokens",
+    "steps": [
+      "Settings",
+      "API tokens",
+      "Create development token"
+    ]
+  },
+  "ciSecret": "WIDGET_TOKEN",
+  "constraints": "Use dummy values only; generate a reviewable script, do not run it or write live configuration. Shell is Bash."
+}

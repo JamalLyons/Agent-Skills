@@ -1,0 +1,22 @@
+{
+  "conversation": [
+    {
+      "role": "user",
+      "text": "Add CSV export of my own expenses for the current month. Keep the existing UI."
+    },
+    {
+      "role": "assistant",
+      "text": "Should historical months be included?"
+    },
+    {
+      "role": "user",
+      "text": "No, current month only. Empty data should produce a header-only file. I have not decided whether dates should be UTC or account-local."
+    }
+  ],
+  "repository": {
+    "tracker": "unknown",
+    "currentExport": "none",
+    "existingTestSeam": "GET /expenses/export",
+    "docsLocation": "docs/specs"
+  }
+}
