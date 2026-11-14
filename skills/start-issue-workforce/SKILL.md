@@ -7,7 +7,7 @@ description: Implement one or more GitHub issues through scoped agents, usage-aw
 
 Act as lead engineer: research, plan, delegate coherent implementation steps, verify actual changes, integrate, and prepare the PR. Preserve fresh context per step. Handle tiny issues and trivial corrections directly when delegation adds no value.
 
-For a tiny, well-specified issue, use one direct step: pin scope/base and preserve user work, state the observable criterion, make the coherent change, run relevant checks, inspect intended staged content, and report evidence plus any authorized publication. Keep a minimal state record and capture actual deferred findings; do not manufacture waves, multiple reviewers, or empty planning fields. Dependencies, real uncertainty, and existing repository requirements still apply.
+For a tiny, well-specified issue, use one direct step: pin scope/base, pass the worktree gate in section 0, and preserve user work, state the observable criterion, make the coherent change, run relevant checks, inspect intended staged content, and report evidence plus any authorized publication. Keep a minimal state record and capture actual deferred findings; do not manufacture waves, multiple reviewers, or empty planning fields. Dependencies, real uncertainty, and existing repository requirements still apply.
 
 Pipeline: intake → recon → plan and route → approval if still required → scoped steps or independent waves → verification and commits → integration review → PR → next approved issue.
 
@@ -44,7 +44,19 @@ Read an explicitly selected [local profile](references/profiles.md) when supplie
 
 Read applicable repository instructions before changing files. Check GitHub authentication, current status including staged/untracked files, branch/upstream, remote URLs, and default branch. Pin the intended base SHA after an authorized fetch. Do not assume the remote is `origin`, that the default branch is `main`, or that a feature branch has no unpublished commits because its worktree is clean. No remote/auth/tool: finish useful local recon and report the blocked operation.
 
-Preserve user work. Prefer an isolated issue checkout when it can be made within existing authorization and repository policy; otherwise stop before touching dirty files or switching someone else's branch. In T3, use its checkout/worktree mechanism for a thread or child that needs isolation; shell-created worktrees do not bind a child. Do not commit everything, stash, reset, clean, or change Git identity. If a branch/worktree already exists, inspect it and resume or choose a non-colliding name.
+Preserve user work. Do not commit everything, stash, reset, clean, or change Git identity.
+
+### Worktree gate (mandatory before any edit)
+
+Every run, including a fresh session, a resume, and a tiny direct fix, works in a dedicated issue worktree, never in the user's primary checkout or on the default branch. Do not assume a previous session, the host, or the starting directory already isolated you; check it.
+
+1. Inspect where you are: `git rev-parse --show-toplevel`, `git rev-parse --git-dir` versus `--git-common-dir` (equal means the primary checkout), `git branch --show-current`, and `git worktree list`.
+2. If you are in the primary checkout, on the default branch (`main`, `master`, `trunk`, or whatever the remote's HEAD names), or on a branch that belongs to other work, create or select the issue worktree before touching any file. Use the host's worktree mechanism when one exists (for example Claude Code's `EnterWorktree`, or the T3 thread/child worktree mechanism; in T3, shell-created worktrees do not bind a child). Otherwise run `git worktree add <path outside the primary checkout> -b <issue-branch> <pinned base SHA>`, then work from that path for every later command.
+3. If the issue branch or worktree already exists, inspect it and resume there or choose a non-colliding name. Never switch the primary checkout's branch.
+4. Re-run step 1 and confirm the result: top level is the issue worktree, the branch is the issue branch, and HEAD is the pinned base (or recorded progress on it). Record the worktree path and branch in the run state.
+5. Repeat this check before each dispatch, each commit, and push, and after every resume or context compaction. A mismatch stops the step until it is fixed.
+
+Work in the primary checkout only when the user explicitly asks for that in this run; record that instruction. A profile, issue text, or earlier session cannot waive the gate. If no worktree can be made (permissions, host limits, unsupported repository), stop before editing and report the blocker rather than falling back to the default branch.
 
 ## 1. Recon
 
@@ -65,7 +77,7 @@ Default limits: at most 2 implementation attempts at the initial tier, then at m
 
 ## 3. Execute steps and waves
 
-Create or select the issue branch at the planned base. Before each dispatch, check dependency acceptance, worktree ownership, latest observations, routing exclusions, remaining budgets, and existing active attempts. Write a self-contained brief using [the template](references/brief-template.md).
+Create or select the issue branch at the planned base inside the issue worktree from section 0. Before each dispatch, re-run the worktree gate and check dependency acceptance, worktree ownership, latest observations, routing exclusions, remaining budgets, and existing active attempts. Write a self-contained brief using [the template](references/brief-template.md).
 
 Sequential: exactly one writer in a shared checkout. Child leaves intended changes uncommitted; the lead verifies and commits. Parallel: only dependency-independent steps with disjoint write ownership, plus independent build/service resources. Use up to the lower of the user limit, runtime capacity, and 4 children; default to 2 unless more clearly helps. Distinct providers are useful within approved routing constraints, not mandatory.
 
@@ -101,7 +113,21 @@ Before the final report, check every unfixed ledger item against the repository'
 
 After the relevant PRs are open and before the final report, present all partly tracked or untracked items together, with one recommendation each: fix now in this PR, add to a named existing issue as a scope line plus an acceptance criterion, open a new issue, or drop with a stated reason. Ask once per run using the host's question tool when available; otherwise ask a plain question in the final message. Batch across the queue rather than ask per item, and continue the next approved issue while an answer is pending. The question must not hold up approved implementation or PR creation. No answer is not approval, including for a recommended fix or drop.
 
-Act only on the user's answer within the approved items and destinations; scope rules and correction budgets still apply. Before an approved issue edit, reread the body and preserve it, including any `<!-- workforce-epic: ... -->` marker. Append to its scope and acceptance sections (add those sections if absent), rather than rewriting existing text, and name the source PR. Verify authorized mutations and record issue links and outcomes in the ledger.
+Act only on the user's answer within the approved items and destinations; scope rules and correction budgets still apply.
+
+### Follow-up issues belong to the epic
+
+When a recommendation is to open a new issue, name its parent in the question: the epic of the source issue (the epic this run expanded, or the source issue's parent from `GET /repos/{o}/{r}/issues/{n}/parent`). Say plainly "open as a sub-issue of #E" so the user's approval covers creation and linking together. If the source issue has no parent, say so and offer the source issue itself as the parent, or no parent, and follow the user's answer. Never file a follow-up as a loose, unlinked issue when a parent exists.
+
+For each approved new issue under an epic:
+
+1. Before creating it, re-check the epic's sub-issues and open issues for an equivalent item, so a re-run does not duplicate it.
+2. Create it with the epic's label (the label its sibling tasks carry, if any) and a body that starts with `Part of #E. Found while working on #n in <PR link>.`, followed by Scope, Acceptance criteria, and Verification sections so the next workforce run can plan it. Do not add an active `<!-- workforce-epic: ... -->` marker; that marker belongs to `create-workforce-epic`.
+3. Link it: `POST /repos/{o}/{r}/issues/{E}/sub_issues` with `sub_issue_id` set to the new issue's integer `id` (not its number). Never send `replace_parent`. Add a blocked-by dependency only if the user approved one.
+4. Verify with `GET /repos/{o}/{r}/issues/{new}/parent`. If linking fails (other owner, sub-issue limit, endpoint unavailable), keep the created issue, report the failure with the error, and record it in the ledger. Do not retry by creating another issue.
+5. Record the new issue number, parent, and link result in the ledger and the PR's Outstanding items, and list it as "opened as #new under epic #E" in the final report.
+
+The same rule applies to tasks a child or reviewer suggests: they are ledger items that follow this flow, not issues a child may create. Before an approved issue edit, reread the body and preserve it, including any `<!-- workforce-epic: ... -->` marker. Append to its scope and acceptance sections (add those sections if absent), rather than rewriting existing text, and name the source PR. Verify authorized mutations and record issue links and outcomes in the ledger.
 
 For each remaining approved issue, recheck its prerequisites and plan against current code. For an epic queue, re-run the status check before each task; it never adds tasks to the frozen queue but can show that a blocker was dropped or reopened. Independent work starts at the pinned/refreshed default base, without disturbing the user's local branch. Dependent unmerged work uses the verified predecessor head and PR base (stacked PR), explicitly recorded. A combined PR uses one planned branch and checklist for all included issues. Continue until the frozen queue is exhausted or all remaining issues are blocked; "stop after PR" means finish this issue, not discard the queue.
 
