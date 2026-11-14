@@ -20,7 +20,7 @@ Use `Closes #<n>` only for fully fulfilled acceptance with required evidence; ot
 - <unavailable/not run check and reason; practical limitation>
 
 ## Outstanding items
-- <ledger item ID, problem and file/symbol>: <tracked in #n with covering scope/acceptance line, or not yet tracked; include partial coverage and pending recommendation/decision>
+- <ledger item ID, problem and file/symbol>: <opened as #n under epic #E, tracked in #n with covering scope/acceptance line, or not yet tracked; include partial coverage and pending recommendation/decision>
 
 ## Review notes
 <Material decisions, unresolved concerns, actual stacked PR base if applicable>

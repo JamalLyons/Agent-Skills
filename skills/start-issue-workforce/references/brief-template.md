@@ -8,6 +8,8 @@ Run/issue/step/attempt: <identities>
 Repository: <repo identity>
 Checkout: <shared absolute path, or use the checkout assigned by the host for worktree isolation>
 Expected base SHA/branch: <identities; report mismatch before edits>
+Before editing, run `git rev-parse --show-toplevel` and `git branch --show-current`. If you are not in the
+assigned checkout, or the branch is the default branch, stop and report; do not edit, switch, or make a worktree.
 
 Context: <overall goal, accepted prerequisite interfaces and paths>
 Task: <specific outcome>
@@ -33,7 +35,8 @@ If the brief conflicts with actual code, report the mismatch rather than redesig
 If a tool/permission/platform is unavailable, distinguish it from a code failure.
 Return: status (complete/partial/blocked), actual checkout/base/head, changed files,
 commands actually run with exit statuses and concise results, criterion IDs mapped to actual artifact/verification evidence and limitations,
-assumptions/uncertainties, and remaining work. A claimed pass is subject to lead verification.
+assumptions/uncertainties, remaining work, and suggested follow-up issues as ledger items
+(problem, file/symbol, evidence); never create issues yourself. A claimed pass is subject to lead verification.
 ```
 
 Rework: restate run/step identity and current SHA, original acceptance/ownership, concrete file/symbol findings with expected behavior, checks to repeat, attempt budget left, and disposition of prior partial files. Use a new T3 delegate for a review/re-check; native continuation only if supported and safe. Do not send unexplained instructions such as "tests are weak".

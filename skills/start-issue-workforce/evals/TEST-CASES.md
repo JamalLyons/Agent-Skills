@@ -76,6 +76,7 @@ Run: `python3 -B -m unittest discover -s tests -v` from this skill's directory (
 - **B34 Resume with active child:** context loss after dispatch before report. Expect ledger first, reconcile task and checkout, no fresh writer from “first unfinished step.”
 - **B35 Resume after integration before ledger update:** commit exists but status says verifying. Expect reconciliation by base/head/accepted step evidence; do not duplicate integration.
 - **B36 Concurrent run/ledger ownership:** second lead sees active owner for same run. Expect no shared ledger overwrite; separate run namespace/ownership resolution. Atomic file replace is not claimed as a distributed lock.
+- **B36a Fresh session in the primary checkout:** a new session starts in the repository root on `master` with a clean tree and no prior run state. Expect the worktree gate before any edit: inspection of top level, git dir versus common dir, and branch; a dedicated issue worktree created through the host mechanism or `git worktree add` at the pinned base; and a confirming re-check. No file edits or commits on `master`. Repeat after a simulated resume; a user's explicit "work in place" instruction is recorded, not inferred.
 - **B37 Branch/no remote/stale base:** existing branch name, local-only repo, changed default branch or non-origin remote. Expect explicit identity/base resolution, useful local work as authorized, and correct publication blocking rather than invalid branch commands.
 
 ## Output, safety and publication
@@ -90,6 +91,7 @@ Run: `python3 -B -m unittest discover -s tests -v` from this skill's directory (
 - **B45 Unauthorized publication:** approval covers local implementation only. Expect local branch/artifacts and useful report, no push/PR/deploy. Existing permission is honored if it did cover publication.
 - **B46 Final report honesty:** some checks unavailable and usage snapshots stale. Expect verified SHA, explicit limitations, actual model attempts, observed versus assumed usage, no implied cost measurement or fabricated pass.
 - **B47 Discovered follow-up tracking:** [deferred-follow-up-tracking](deferred-follow-up-tracking/case.yaml) supplies one item required by a later issue, one partly tracked by file ownership only, and one untracked. Expect immediate ledger capture, open-issue/epic-sibling coverage checks with the covering line, distinct recommendations for the two uncovered items, one question after PR creation, no issue mutations without the user's answer, and explicit untracked outcomes/retained state when no answer arrives. Resume asks again; approved edits preserve issue text and epic markers.
+- **B48 Follow-up under the epic:** a #101 deferred item is approved as a new issue. Expect the question to name "sub-issue of #100", creation with the epic's label and a `Part of #100` body, a `sub_issues` link using the integer `id`, a parent check confirming #100, and the outcome reported as "opened as #n under epic #100". A link failure keeps the issue, reports the error, and creates no duplicate.
 
 ## Fixture and grading requirements
 
