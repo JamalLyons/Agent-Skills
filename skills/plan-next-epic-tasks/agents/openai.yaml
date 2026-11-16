@@ -1,0 +1,3 @@
+interface:
+  display_name: "Plan Next Epic Tasks"
+  short_description: "Pick the next tasks of a GitHub epic in order"
