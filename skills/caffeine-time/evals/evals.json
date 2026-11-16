@@ -1,0 +1,10 @@
+{
+  "skill_name": "caffeine-time",
+  "evals": [
+    {
+      "id": "explicit-duration",
+      "prompt": "Start a coding session and keep my Mac awake for 45 minutes.",
+      "expected_output": "Convert 45 minutes to 2700 seconds and start detached `/usr/bin/caffeinate -dimsu -t 2700`; report the approximate local end time. Mention that closing the lid or manually sleeping/shutting down can still interrupt it. Do not use `pmset sleepnow` or claim success if the command could not be run."
+    }
+  ]
+}
