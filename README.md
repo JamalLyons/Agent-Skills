@@ -40,6 +40,7 @@ To install somewhere else, use `./install.sh --target /path/to/skills` (repeatab
 - [wizard](skills/wizard/SKILL.md) — Generate an interactive script for manual setup steps.
 - [handoff](skills/handoff/SKILL.md) — Prepare a fresh agent to continue the work.
 - [create-workforce-epic](skills/create-workforce-epic/SKILL.md) — Break a GitHub epic into scoped, dependent issues.
+- [plan-next-epic-tasks](skills/plan-next-epic-tasks/SKILL.md) — Pick the next tasks of an epic in implementation order.
 - [start-issue-workforce](skills/start-issue-workforce/SKILL.md) — Take GitHub issues through implementation, verification, and pull requests.
 
 ## Use
