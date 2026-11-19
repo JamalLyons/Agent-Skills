@@ -34,6 +34,7 @@ To install somewhere else, use `./install.sh --target /path/to/skills` (repeatab
 ### Build and deliver
 
 - [tdd](skills/tdd/SKILL.md) — Build behavior through failing tests and small implementation steps.
+- [frontend-design](skills/frontend-design/SKILL.md) — Create distinctive, intentional visual design for web interfaces.
 - [code-review](skills/code-review/SKILL.md) — Review correctness, regressions, project standards, and spec fidelity.
 - [bug-investigation](skills/bug-investigation/SKILL.md) — Reproduce a failure, test competing explanations, and verify a bounded fix.
 - [pr-follow-through](skills/pr-follow-through/SKILL.md) — Address review and CI blockers on an existing pull or merge request.
