@@ -1,0 +1,15 @@
+{
+  "skill_name": "frontend-design",
+  "evals": [
+    {
+      "id": "plan-before-build",
+      "prompt": "Design a landing page for a small independent bicycle repair co-op that runs evening classes. Build it as a single self-contained HTML file.",
+      "expected_output": "Ground the design in the subject (repair co-op, classes, local audience) and state it as a proposal. Produce a compact plan first: 4-6 named hex colors, deliberate typefaces with roles, a layout concept with alignment, and principles. Review the plan against the generic defaults listed in the skill (cream/terracotta serif, dark acid-accent, broadsheet, SaaS card kit, template chrome) and revise any default it fell into, saying what changed. Then build responsive, keyboard-focusable, reduced-motion-respecting HTML with real subject copy, plain active-voice CTAs, and no unnecessary all-caps eyebrow labels or fake numbered sequences."
+    },
+    {
+      "id": "brief-overrides-defaults",
+      "prompt": "Restyle our pricing section in a strict newspaper broadsheet look: hairline rules, zero border radius, dense serif columns. Keep our existing three tiers and copy.",
+      "expected_output": "Follow the explicit broadsheet direction exactly even though the skill lists it as a common default, because the brief's words win. Keep the supplied tiers and copy, make choices only on axes the brief leaves free, keep accessibility and responsive floors, and do not open browser tools unless asked."
+    }
+  ]
+}
