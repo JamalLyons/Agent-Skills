@@ -4,7 +4,17 @@
     {
       "id": "explicit-duration",
       "prompt": "Start a coding session and keep my Mac awake for 45 minutes.",
-      "expected_output": "Convert 45 minutes to 2700 seconds and start detached `/usr/bin/caffeinate -dimsu -t 2700`; report the approximate local end time. Mention that closing the lid or manually sleeping/shutting down can still interrupt it. Do not use `pmset sleepnow` or claim success if the command could not be run."
+      "expected_output": "Convert 45 minutes to 2700 seconds; check `$TMPDIR/caffeine-time.pid` for an existing timer; start detached `/usr/bin/caffeinate -i -t 2700` (no `-d` unless asked), write its PID to the pidfile, and verify it is running. Report the approximate local end time, the PID, and `kill <pid>` to stop. Mention that closing the lid or manually sleeping/shutting down can still interrupt it. Do not use `pmset` or claim success if the command could not be run."
+    },
+    {
+      "id": "repeat-invocation",
+      "prompt": "Start a coding session. (A caffeine-time timer started 30 minutes ago is still running; its PID is in $TMPDIR/caffeine-time.pid.)",
+      "expected_output": "Detect the running timer via the pidfile and verify the PID is caffeinate; do not start a second caffeinate. Report remaining time (about 2h26m) and offer to extend/replace or keep it. Replace only after the user agrees, killing only that PID. Never run `killall caffeinate` or `pkill caffeinate`."
+    },
+    {
+      "id": "stop-timer",
+      "prompt": "Stop caffeine.",
+      "expected_output": "Read the PID from `$TMPDIR/caffeine-time.pid`, confirm it is caffeinate, `kill` only that PID, verify it exited, and remove the pidfile. If none is running, say so. Never use `killall` or `pkill`."
     }
   ]
 }
