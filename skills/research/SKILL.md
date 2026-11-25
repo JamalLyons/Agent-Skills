@@ -1,7 +1,7 @@
 ---
 name: research
 license: MIT
-description: Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent.
+description: Investigate a question against high-trust primary sources (specs, source code, official docs) and report cited findings with confidence labels, saved as a Markdown file unless the user wants only an answer. Use when the user wants a topic researched, docs or API facts checked, version-specific behavior confirmed, or reading legwork delegated. Do not use for debugging a local failure (bug-investigation).
 ---
 
 Investigate directly by default. If the user requests delegation and the host supports it, use a fresh-context research agent through the host's native delegation mechanism. Do not require background-agent support.

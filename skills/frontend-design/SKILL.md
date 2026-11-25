@@ -1,6 +1,6 @@
 ---
 name: frontend-design
-description: Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.
+description: Give new or reshaped web UI a distinctive, intentional visual direction (palette, typography, layout, motion, and interface copy) instead of templated defaults. Use when the user asks to design or redesign a page, landing page, component, or app screen, wants it to look less generic or AI-made, or asks for aesthetic direction. Do not use for pure logic or backend changes, or to follow an existing design system exactly without new visual decisions.
 license: Complete terms in LICENSE.txt
 ---
 
@@ -58,17 +58,9 @@ When writing the code, be careful of structuring your CSS selector specificities
 
 Spend your boldness in one place. Let one element be the memorable thing, keep everything around it quiet and disciplined, and cut any decoration that does not serve the brief. Build to a quality floor without announcing it: responsive down to mobile, visible keyboard focus, reduced motion respected, visually accessible, harmonious color palettes. Critique your work as you build. When browser review is part of the request, inspect the rendered page at relevant viewport sizes and remove one unnecessary decoration. Human creatives have memory and always try to do something new, so if you have a space to quickly jot down notes about what you've tried, it can help you in future passes.
 
-## T3 Code browser tools
+## Browser review
 
-Use these tools when the user asks for browser work, asks to record UI changes, or identifies a page or tab. Do not use them for routine code edits just to verify or show your own work.
-
-- Start with `preview_status`. If no suitable tab is available, use `preview_open` for the requested page. Respect tab ownership; operate only on a tab owned by this agent or an unclaimed tab.
-- Use `preview_snapshot` to inspect the requested page. Set `includeImage: true` when visual inspection is requested. Prefer its accessibility-tree `aria-ref` locators with `preview_act` over coordinates. Take a fresh snapshot after navigation because refs expire.
-- For requested responsive review, use `preview_resize` to check a phone-sized viewport and the relevant desktop size. Use `preview_set_appearance` when the requested review includes light or dark mode. Restore the user's prior viewport or appearance when practical.
-- Use `preview_recording_start` and `preview_recording_stop` only when the user asks for a recording. Close a tab opened for the task with `t3_preview_close` before replying, unless the user asked to keep it open.
-- For a self-contained HTML mockup the user asks to see inline, call `html_preview` first, then `html_render` using its `contentHeight`. Keep the HTML self-contained; do not start a server for these tools. Use the render constraints from the tool description, including theme variables and frame sizing. These tools display a mockup; they do not replace implementing the requested project UI.
-
-When these T3 Code tools are unavailable, use the current host's supported browser workflow when the request calls for one. Keep the design and implementation usable without any T3-specific tool.
+When the request asks for browser inspection, a recording, responsive or light/dark review, or an inline mockup, read [browser review](references/browser-review.md) and use the host's browser tooling. Do not open a browser only to show routine edits.
 
 ## More on writing in design
 
