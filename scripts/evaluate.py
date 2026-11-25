@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare and execute portable skill comparisons; execution is never a semantic grade."""
+"""Prepare, execute, grade, and report portable skill comparisons; execution is never a semantic grade."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,7 @@ import json
 import math
 import os
 from pathlib import Path
+import random
 import re
 import shutil
 import signal
@@ -19,6 +20,8 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 VARIANTS = ('without_skill', 'with_skill')
 ID_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
+RESULTS = {'pass': 1.0, 'partial': 0.5, 'fail': 0.0}
+LABELS = ('A', 'B')
 
 
 class EvalError(ValueError):
@@ -222,6 +225,224 @@ def run_variant(prepared: Path, variant: str, adapter: list[str], timeout: float
     return result
 
 
+def load_case(prepared: Path) -> dict:
+    info = read_json(prepared / 'case.json')
+    if not isinstance(info, dict) or info.get('version') != 1:
+        raise EvalError(f'{prepared}: unsupported prepared comparison')
+    return info
+
+def load_run(prepared: Path, variant: str):
+    path = prepared / variant / 'run.json'
+    return read_json(path) if path.is_file() else None
+
+def blind(prepared: Path, seed=None) -> Path:
+    """Copy both variants' evidence under shuffled labels; the key stays outside the packet."""
+    load_case(prepared)
+    key_path, packet = prepared / 'blind-key.json', prepared / 'blind'
+    if key_path.exists() or packet.exists():
+        raise EvalError('blind packet already exists for this comparison')
+    for variant in VARIANTS:
+        run = load_run(prepared, variant)
+        if not run or run.get('execution_status') in ('starting', 'launch_failed'):
+            raise EvalError(f'{variant} has not run; execute both variants before blinding')
+    order = list(VARIANTS)
+    random.Random(seed).shuffle(order)
+    mapping = dict(zip(LABELS, order))
+    try:
+        for label, variant in mapping.items():
+            source, target = prepared / variant, packet / label
+            for name in ('stdout.log', 'stderr.log'):
+                if (source / name).is_file():
+                    target.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source / name, target / name)
+            shutil.copytree(source / 'outputs', target / 'outputs', symlinks=True)
+            # The skill snapshot and the variant-specific prompt line would reveal the label.
+            shutil.copytree(source / 'workspace', target / 'workspace', symlinks=True,
+                            ignore=lambda d, names: ['_skills'] if Path(d) == source / 'workspace' else [])
+    except BaseException:
+        shutil.rmtree(packet, ignore_errors=True)
+        raise
+    key_path.write_text(json.dumps({'version': 1, 'labels': mapping}, indent=2) + '\n')
+    return packet
+
+def resolve_label(prepared: Path, label: str) -> str:
+    key = read_json(prepared / 'blind-key.json')
+    try:
+        return key['labels'][label]
+    except (KeyError, TypeError) as exc:
+        raise EvalError(f'unknown blind label {label!r}') from exc
+
+def validate_grade(note) -> dict:
+    if not isinstance(note, dict):
+        raise EvalError('grade must be a JSON object')
+    unknown = set(note) - {'grader', 'assertions', 'limitations', 'notes'}
+    if unknown:
+        raise EvalError(f'unknown grade fields: {sorted(unknown)}')
+    if not isinstance(note.get('grader'), str) or not note['grader'].strip():
+        raise EvalError('grade needs a nonempty grader label')
+    assertions = note.get('assertions')
+    if not isinstance(assertions, list) or not assertions:
+        raise EvalError('grade needs a nonempty assertions list')
+    seen = set()
+    for item in assertions:
+        if not isinstance(item, dict) or set(item) - {'id', 'text', 'result', 'evidence'}:
+            raise EvalError('each assertion is an object with id, result, evidence, and optional text')
+        key = item.get('id')
+        if not isinstance(key, str) or not ID_RE.fullmatch(key) or key in seen:
+            raise EvalError(f'invalid or duplicate assertion id {key!r}')
+        seen.add(key)
+        if item.get('result') not in RESULTS:
+            raise EvalError(f'assertion {key}: result must be pass, fail, or partial')
+        if not isinstance(item.get('evidence'), str) or not item['evidence'].strip():
+            raise EvalError(f'assertion {key}: evidence text is required')
+        if 'text' in item and not isinstance(item['text'], str):
+            raise EvalError(f'assertion {key}: text must be a string')
+    limitations = note.get('limitations')
+    if not isinstance(limitations, list) or not all(isinstance(x, str) and x.strip() for x in limitations):
+        raise EvalError('limitations must be a list of strings (use [] only when none apply)')
+    if 'notes' in note and not isinstance(note['notes'], str):
+        raise EvalError('notes must be a string')
+    return note
+
+def grade(prepared: Path, variant: str, note, *, label=None, replace=False) -> dict:
+    """Record one variant's semantic grade in grades.json beside case.json."""
+    load_case(prepared)
+    if label is not None:
+        variant = resolve_label(prepared, label)
+    if variant not in VARIANTS:
+        raise EvalError('invalid variant')
+    validate_grade(note)
+    run = load_run(prepared, variant)
+    if not run or run.get('execution_status') in ('starting', 'launch_failed'):
+        raise EvalError(f'{variant} never ran to completion or failure; nothing to grade')
+    path = prepared / 'grades.json'
+    grades = read_json(path) if path.exists() else {'version': 1, 'variants': {}}
+    if not isinstance(grades, dict) or grades.get('version') != 1 or not isinstance(grades.get('variants'), dict):
+        raise EvalError(f'{path}: unsupported grades file')
+    if variant in grades['variants'] and not replace:
+        raise EvalError(f'{variant} is already graded; pass --replace to overwrite deliberately')
+    other = grades['variants'].get(VARIANTS[1 - VARIANTS.index(variant)])
+    ids = [a['id'] for a in note['assertions']]
+    if other and sorted(a['id'] for a in other['assertions']) != sorted(ids):
+        raise EvalError('assertion ids must match the other graded variant for a paired comparison')
+    entry = dict(note, blind=label is not None, graded_at=datetime.now(timezone.utc).isoformat())
+    if label is not None:
+        entry['label'] = label
+    entry['score'] = round(sum(RESULTS[a['result']] for a in note['assertions']) / len(ids), 4)
+    grades['variants'][variant] = entry
+    tmp = path.with_suffix('.tmp')
+    tmp.write_text(json.dumps(grades, indent=2) + '\n')
+    tmp.replace(path)
+    return entry
+
+def find_comparisons(paths) -> list[Path]:
+    found = set()
+    for path in paths:
+        path = Path(path)
+        if (path / 'case.json').is_file():
+            found.add(path.resolve())
+        elif path.is_dir():
+            found.update(p.parent.resolve() for p in path.rglob('case.json')
+                         if not {'blind', 'workspace', 'outputs'} & set(p.relative_to(path).parts))
+        else:
+            raise EvalError(f'not a comparison directory: {path}')
+    return sorted(found)
+
+def reported_tokens(prepared: Path, variant: str):
+    """Tokens come only from an adapter-written outputs/usage.json; never estimated."""
+    path = prepared / variant / 'outputs/usage.json'
+    if not path.is_file():
+        return None
+    try:
+        usage = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    values = [usage.get(k) for k in ('input_tokens', 'output_tokens')] if isinstance(usage, dict) else []
+    if len(values) != 2 or not all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in values):
+        return None
+    return sum(values)
+
+def mean(values):
+    return round(sum(values) / len(values), 4) if values else None
+
+def report(paths) -> dict:
+    skills: dict = {}
+    for prepared in find_comparisons(paths):
+        info = load_case(prepared)
+        grades_path = prepared / 'grades.json'
+        grades = read_json(grades_path).get('variants', {}) if grades_path.is_file() else {}
+        skill = skills.setdefault(info['skill_name'], {'comparisons': [], 'skill_versions': set()})
+        skill['skill_versions'].add(hashlib.sha256(json.dumps(info.get('skill_sha256', {}), sort_keys=True).encode()).hexdigest())
+        row = {'path': str(prepared), 'case_id': info['case_id']}
+        for variant in VARIANTS:
+            run = load_run(prepared, variant)
+            entry = grades.get(variant)
+            row[variant] = {
+                'execution_status': run.get('execution_status') if run else 'not_run',
+                'host': run.get('host') if run else None, 'model': run.get('model') if run else None,
+                'elapsed_seconds': run.get('elapsed_seconds') if run else None,
+                'tokens': reported_tokens(prepared, variant) if run else None,
+                'score': entry.get('score') if entry else None,
+                'blind': entry.get('blind') if entry else None,
+            }
+        skill['comparisons'].append(row)
+    summary = {'version': 1, 'generated_at': datetime.now(timezone.utc).isoformat(), 'skills': {}}
+    for name, skill in sorted(skills.items()):
+        rows = skill['comparisons']
+        out = {'comparisons': len(rows), 'skill_versions': len(skill['skill_versions']), 'variants': {}, 'warnings': []}
+        for variant in VARIANTS:
+            cells = [r[variant] for r in rows]
+            ran = [c for c in cells if c['execution_status'] not in ('not_run', 'starting', 'launch_failed')]
+            tokens = [c['tokens'] for c in ran if c['tokens'] is not None]
+            elapsed = [c['elapsed_seconds'] for c in ran if isinstance(c['elapsed_seconds'], (int, float))]
+            scores = [c['score'] for c in cells if c['score'] is not None]
+            out['variants'][variant] = {
+                'ran': len(ran), 'graded': len(scores), 'ungraded': len(ran) - len(scores),
+                'mean_score': mean(scores), 'mean_elapsed_seconds': mean(elapsed),
+                'tokens_reported': len(tokens), 'mean_tokens': mean(tokens) if tokens else None,
+            }
+        paired = [r for r in rows if r['with_skill']['score'] is not None and r['without_skill']['score'] is not None]
+        out['paired'] = len(paired)
+        out['score_delta'] = mean([r['with_skill']['score'] - r['without_skill']['score'] for r in paired])
+        for r in rows:
+            a, b = r['with_skill'], r['without_skill']
+            if a['host'] and b['host'] and (a['host'], a['model']) != (b['host'], b['model']):
+                out['warnings'].append(f"{r['case_id']}: variants used different host/model")
+        if out['skill_versions'] > 1:
+            out['warnings'].append('comparisons used different skill snapshots')
+        out['cases'] = rows
+        summary['skills'][name] = out
+    return summary
+
+def fmt(value, suffix=''):
+    if value is None:
+        return 'n/a'
+    return f'{value:.0%}' if suffix == '%' else f'{value:+.0%}' if suffix == '+%' else f'{value:g}{suffix}'
+
+def report_markdown(summary: dict) -> str:
+    lines = ['# Skill evaluation report', '',
+             'Scores: pass = 1, partial = 0.5, fail = 0, averaged per graded case. `n/a` means not measured; '
+             'tokens appear only when an adapter reported them. Deltas use only cases graded in both variants.', '']
+    if not summary['skills']:
+        lines.append('No comparisons found.')
+    for name, s in summary['skills'].items():
+        w, wo = s['variants']['with_skill'], s['variants']['without_skill']
+        lines += [f'## {name}', '',
+                  f"{s['comparisons']} comparisons, {s['paired']} paired grades, score delta {fmt(s['score_delta'], '+%')}.", '',
+                  '| Variant | Ran | Graded | Ungraded | Mean score | Mean elapsed | Mean tokens (reported) |',
+                  '| --- | --- | --- | --- | --- | --- | --- |']
+        for label, v in (('with skill', w), ('without skill', wo)):
+            lines.append(f"| {label} | {v['ran']} | {v['graded']} | {v['ungraded']} | {fmt(v['mean_score'], '%')} | "
+                         f"{fmt(v['mean_elapsed_seconds'], 's')} | {fmt(v['mean_tokens'])} ({v['tokens_reported']}) |")
+        lines += ['', '| Case | With | Without | Blind |', '| --- | --- | --- | --- |']
+        for r in s['cases']:
+            blind_flags = {r[v]['blind'] for v in VARIANTS if r[v]['blind'] is not None}
+            lines.append(f"| {r['case_id']} | {fmt(r['with_skill']['score'], '%')} ({r['with_skill']['execution_status']}) | "
+                         f"{fmt(r['without_skill']['score'], '%')} ({r['without_skill']['execution_status']}) | "
+                         f"{'yes' if blind_flags == {True} else 'no' if blind_flags else 'n/a'} |")
+        lines += [''] + [f'- Warning: {x}' for x in s['warnings']] + ([''] if s['warnings'] else [])
+    return '\n'.join(lines).rstrip() + '\n'
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -238,6 +459,19 @@ def main(argv=None) -> int:
     run.add_argument('--timeout', type=float, default=300)
     run.add_argument('--host', required=True)
     run.add_argument('--model', required=True)
+    shuffle = sub.add_parser('blind', help='copy both variants under shuffled labels A/B for a blind grader')
+    shuffle.add_argument('prepared', type=Path)
+    shuffle.add_argument('--seed', type=int)
+    record = sub.add_parser('grade', help='record a structured grade for one executed variant in grades.json')
+    record.add_argument('prepared', type=Path)
+    target = record.add_mutually_exclusive_group(required=True)
+    target.add_argument('--variant', choices=VARIANTS)
+    target.add_argument('--label', choices=LABELS, help='grade by blind label; resolved through blind-key.json')
+    record.add_argument('--note', type=Path, required=True, help='JSON: grader, assertions[{id,text?,result,evidence}], limitations[]')
+    record.add_argument('--replace', action='store_true')
+    summary = sub.add_parser('report', help='aggregate comparison directories into Markdown and JSON summaries')
+    summary.add_argument('paths', nargs='+', type=Path)
+    summary.add_argument('--out', type=Path, required=True, help='output prefix; writes <out>.md and <out>.json')
     args = parser.parse_args(argv)
     try:
         if args.command == 'validate':
@@ -248,6 +482,16 @@ def main(argv=None) -> int:
             print(f'Validated {len(paths)} manifests, {count} cases; no agent evaluations executed.')
         elif args.command == 'prepare':
             print(prepare(args.manifest, args.case, args.out))
+        elif args.command == 'blind':
+            print(blind(args.prepared, args.seed))
+        elif args.command == 'grade':
+            entry = grade(args.prepared, args.variant, read_json(args.note), label=args.label, replace=args.replace)
+            print(f"Recorded grade score {entry['score']:.0%}" + (' (blind)' if entry['blind'] else ''))
+        elif args.command == 'report':
+            data = report(args.paths)
+            Path(f'{args.out}.json').write_text(json.dumps(data, indent=2) + '\n')
+            Path(f'{args.out}.md').write_text(report_markdown(data))
+            print(f'Wrote {args.out}.md and {args.out}.json for {len(data["skills"])} skills.')
         else:
             adapter = json.loads(args.adapter_json)
             result = run_variant(args.prepared, args.variant, adapter, args.timeout, args.host, args.model)

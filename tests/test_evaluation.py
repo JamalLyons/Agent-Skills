@@ -148,5 +148,117 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn('no agent evaluations executed', result.stdout)
 
 
+    def ran(self, *variants, usage=None):
+        self.prepare()
+        for variant in variants:
+            script = 'import json, sys; print("artifact")'
+            if usage is not None and variant == 'with_skill':
+                script += f'; open(sys.argv[2] + "/usage.json", "w").write({json.dumps(json.dumps(usage))})'
+            evaluate.run_variant(self.prepared, variant, [sys.executable, '-c', script, '{prompt_file}', '{output_dir}'], 5, 'stub', 'stub-model')
+
+    def note(self, *results):
+        return {'grader': 'tester', 'limitations': ['stub adapter only'],
+                'assertions': [{'id': f'a{i}', 'result': r, 'evidence': f'saw {r}'} for i, r in enumerate(results)]}
+
+    def test_grade_records_structured_note_next_to_case(self):
+        self.ran('with_skill')
+        entry = evaluate.grade(self.prepared, 'with_skill', self.note('pass', 'partial', 'fail', 'pass'))
+        self.assertEqual(entry['score'], 0.625)
+        saved = json.loads((self.prepared / 'grades.json').read_text())
+        self.assertEqual(saved['variants']['with_skill']['assertions'][1]['result'], 'partial')
+        self.assertFalse(saved['variants']['with_skill']['blind'])
+        self.assertIsNone(json.loads((self.prepared / 'with_skill/run.json').read_text())['semantic_grade'])
+
+    def test_grade_refuses_unrun_variant_bad_schema_duplicates_and_mismatched_assertions(self):
+        self.ran('with_skill')
+        with self.assertRaisesRegex(evaluate.EvalError, 'never ran'):
+            evaluate.grade(self.prepared, 'without_skill', self.note('pass'))
+        bad_notes = [[], {'assertions': []}, {**self.note('pass'), 'grader': ''},
+                     {**self.note('pass'), 'extra': 1}, {**self.note('pass'), 'limitations': 'none'},
+                     {'grader': 'x', 'limitations': [], 'assertions': [{'id': 'a', 'result': 'ok', 'evidence': 'e'}]},
+                     {'grader': 'x', 'limitations': [], 'assertions': [{'id': 'a', 'result': 'pass', 'evidence': ' '}]},
+                     {'grader': 'x', 'limitations': [], 'assertions': [{'id': 'a', 'result': 'pass', 'evidence': 'e'}] * 2}]
+        for note in bad_notes:
+            with self.subTest(note=note), self.assertRaises(evaluate.EvalError):
+                evaluate.grade(self.prepared, 'with_skill', note)
+        self.assertFalse((self.prepared / 'grades.json').exists())
+        evaluate.grade(self.prepared, 'with_skill', self.note('pass'))
+        with self.assertRaisesRegex(evaluate.EvalError, 'already graded'):
+            evaluate.grade(self.prepared, 'with_skill', self.note('fail'))
+        self.assertEqual(evaluate.grade(self.prepared, 'with_skill', self.note('fail'), replace=True)['score'], 0)
+        evaluate.run_variant(self.prepared, 'without_skill', [sys.executable, '-c', '', '{prompt_file}'], 5, 'stub', 'stub-model')
+        with self.assertRaisesRegex(evaluate.EvalError, 'must match'):
+            evaluate.grade(self.prepared, 'without_skill', self.note('pass', 'pass'))
+
+    def test_launch_failure_cannot_be_graded(self):
+        self.prepare()
+        evaluate.run_variant(self.prepared, 'with_skill', ['/does/not/exist', '{prompt_file}'], 2, 'stub', 'stub')
+        with self.assertRaisesRegex(evaluate.EvalError, 'never ran'):
+            evaluate.grade(self.prepared, 'with_skill', self.note('pass'))
+
+    def test_blind_packet_hides_variant_and_grades_resolve_through_key(self):
+        self.ran('with_skill')
+        with self.assertRaisesRegex(evaluate.EvalError, 'has not run'):
+            evaluate.blind(self.prepared)
+        evaluate.run_variant(self.prepared, 'without_skill', [sys.executable, '-c', 'print("artifact")', '{prompt_file}'], 5, 'stub', 'stub-model')
+        packet = evaluate.blind(self.prepared, seed=3)
+        self.assertEqual(sorted(p.name for p in packet.iterdir()), ['A', 'B'])
+        for label in evaluate.LABELS:
+            self.assertFalse((packet / label / 'workspace/_skills').exists())
+            self.assertFalse((packet / label / 'prompt.txt').exists())
+            self.assertTrue((packet / label / 'workspace/evals/fixtures/input.txt').is_file())
+        with self.assertRaises(evaluate.EvalError):
+            evaluate.blind(self.prepared)
+        key = json.loads((self.prepared / 'blind-key.json').read_text())['labels']
+        entry = evaluate.grade(self.prepared, None, self.note('pass'), label='A')
+        self.assertTrue(entry['blind'])
+        self.assertIn(key['A'], json.loads((self.prepared / 'grades.json').read_text())['variants'])
+
+    def test_report_aggregates_without_fabricating_missing_numbers(self):
+        self.ran('with_skill', 'without_skill', usage={'input_tokens': 100, 'output_tokens': 20})
+        evaluate.grade(self.prepared, 'with_skill', self.note('pass', 'pass'))
+        evaluate.grade(self.prepared, 'without_skill', self.note('pass', 'fail'))
+        second = self.root / 'runs/second'
+        evaluate.prepare(self.path, 'ordinary', second)
+        evaluate.run_variant(second, 'with_skill', [sys.executable, '-c', '', '{prompt_file}'], 5, 'stub', 'stub-model')
+        summary = evaluate.report([self.prepared, self.root / 'runs'])
+        skill = summary['skills']['example']
+        self.assertEqual(skill['comparisons'], 2)
+        self.assertEqual(skill['paired'], 1)
+        self.assertEqual(skill['score_delta'], 0.5)
+        w, wo = skill['variants']['with_skill'], skill['variants']['without_skill']
+        self.assertEqual((w['ran'], w['graded'], w['ungraded']), (2, 1, 1))
+        self.assertEqual((wo['ran'], wo['graded'], wo['ungraded']), (1, 1, 0))
+        self.assertEqual((w['mean_tokens'], w['tokens_reported']), (120, 1))
+        self.assertIsNone(wo['mean_tokens'])
+        self.assertIsNotNone(w['mean_elapsed_seconds'])
+        markdown = evaluate.report_markdown(summary)
+        self.assertIn('## example', markdown)
+        self.assertIn('n/a (0)', markdown)
+        self.assertIn('not_run', markdown)
+
+    def test_report_ignores_malformed_usage_and_flags_mismatched_models(self):
+        self.ran('with_skill', usage={'input_tokens': '5', 'output_tokens': 1})
+        evaluate.run_variant(self.prepared, 'without_skill', [sys.executable, '-c', '', '{prompt_file}'], 5, 'stub', 'other-model')
+        skill = evaluate.report([self.prepared])['skills']['example']
+        self.assertIsNone(skill['variants']['with_skill']['mean_tokens'])
+        self.assertIsNone(skill['score_delta'])
+        self.assertTrue(any('different host/model' in w for w in skill['warnings']))
+
+    def test_cli_grade_and_report(self):
+        self.ran('with_skill')
+        note = self.root / 'note.json'
+        note.write_text(json.dumps(self.note('partial')))
+        script = str(ROOT / 'scripts/evaluate.py')
+        result = subprocess.run([sys.executable, script, 'grade', str(self.prepared), '--variant', 'with_skill', '--note', str(note)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = subprocess.run([sys.executable, script, 'grade', str(self.prepared), '--variant', 'without_skill', '--note', str(note)], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        out = self.root / 'summary'
+        result = subprocess.run([sys.executable, script, 'report', str(self.prepared), '--out', str(out)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(Path(f'{out}.json').read_text())['skills']['example']['variants']['with_skill']['mean_score'], 0.5)
+        self.assertIn('# Skill evaluation report', Path(f'{out}.md').read_text())
+
 if __name__ == '__main__':
     unittest.main()

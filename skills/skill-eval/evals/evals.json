@@ -1,0 +1,33 @@
+{
+  "skill_name": "skill-eval",
+  "evals": [
+    {
+      "id": "blind-grade-packet",
+      "prompt": "Grade the blind comparison in evals/fixtures/blind-packet/. case.md has the task and expected outcome; A/ and B/ are the two runs. Produce one grading note per label in the JSON shape scripts/evaluate.py grade accepts. Do not try to work out which label used the skill.",
+      "expected_output": "Split the expected outcome into the same short assertion ids for A and B (experiment/inspection, observed vs inferred, correction plus regression proposal, scope respected, no false claims). Grade A mostly pass with evidence quoted from final.md. Grade B fail on scope (it edited source and tests in a diagnosis-only task) and on unsupported claims (it says tests pass but no output was recorded), partial at most on the explanation. Each note has grader, assertions with pass/fail/partial and evidence, and limitations such as missing tool traces. Does not guess or reveal which label is the skill variant.",
+      "files": [
+        "evals/fixtures/blind-packet/case.md",
+        "evals/fixtures/blind-packet/A/final.md",
+        "evals/fixtures/blind-packet/A/workspace-diff.txt",
+        "evals/fixtures/blind-packet/B/final.md",
+        "evals/fixtures/blind-packet/B/workspace-diff.txt"
+      ]
+    },
+    {
+      "id": "recommend-from-report",
+      "prompt": "Here is the evaluate.py report JSON from last week's runs (evals/fixtures/report.json). Which skills earn their tokens and which need work? Keep it short.",
+      "expected_output": "code-review: positive delta (+33 points over 3 paired cases) with about 20% more reported tokens and time; recommend keeping, note the untracked-scope case shows no gain and the sample is small. handoff: inconclusive, not a confident fail — only one paired case, a host/model mismatch warning, one timed-out ungraded run and one variant never run; recommend a fresh paired rerun with the same host/model. States tokens were not reported for handoff instead of estimating them. Does not invent numbers absent from the report.",
+      "files": [
+        "evals/fixtures/report.json"
+      ]
+    },
+    {
+      "id": "no-agent-available",
+      "prompt": "Evaluate my code-review skill and tell me if it's worth keeping. The environment is described in evals/fixtures/environment.json.",
+      "expected_output": "Recognize that no agent CLI or credentials are available, so with/without runs cannot be executed. Do not simulate either variant itself, write fabricated run or grade records, or give a verdict on the skill's value. May run validate and prepare to show readiness. Explain what is needed (an adapter for an installed agent CLI, same host/model for both variants, isolation) and the exact next commands.",
+      "files": [
+        "evals/fixtures/environment.json"
+      ]
+    }
+  ]
+}
