@@ -1,27 +1,28 @@
 ---
 name: caffeine-time
-description: Start a coding session and keep the computer awake for a specified duration so work is not interrupted. Use when the user asks to begin coding without the computer sleeping; defaults to 2 hours 56 minutes.
+description: Keep a Mac awake for a coding session for a set duration, defaulting to 2 hours 56 minutes, without stacking duplicate timers; also extend, check, or stop that timer. Use when the user asks to start a coding session, keep the computer awake, stop it sleeping, or stop or extend caffeine. macOS-first; other platforms use their native inhibitor if known.
 ---
 
 # Caffeine Time
 
-When starting a coding session, prevent the Mac from sleeping for the requested duration. If the user does not give a duration, use **2 hours 56 minutes** (10,560 seconds).
+Keep the Mac from idle-sleeping for the requested duration; default **2 hours 56 minutes** (10,560 s). Pidfile: `"${TMPDIR:-/tmp}/caffeine-time.pid"`.
 
-## Procedure
-
-1. Determine the duration from the user's request. Accept natural language durations such as `90 minutes`, `2 hours`, or `1 hour 15 minutes`. If omitted, use 2 hours 56 minutes. If the requested time is ambiguous, use the clearest reasonable interpretation and state it.
-2. Confirm the platform. This skill's command is for macOS. On another platform, use that platform's native awake/inhibit mechanism if known; otherwise explain the limitation.
-3. Start a detached macOS `caffeinate` process for the computed integer number of seconds. Substitute the duration for `SECONDS`:
+1. Parse the duration (`90 minutes`, `1 hour 15 minutes`, etc.) to integer seconds; state any interpretation. macOS only; elsewhere use the native inhibitor if known, else explain.
+2. Check for this skill's timer: read the pidfile and confirm with `ps -o pid=,etime=,command= -p <pid>` that it is still `caffeinate`. A stale pidfile (no process, or not caffeinate) is removed. `pgrep -fl caffeinate` may show other timers; never touch those.
+3. If a timer is running, do not start another. Report its remaining time and offer to **extend** (replace with a new timer of the new total) or **keep** it. Replace only after the user agrees.
+4. Start (or replace: `kill <old pid>` first, only that PID):
 
    ```sh
-   ( nohup /usr/bin/caffeinate -dimsu -t SECONDS >/dev/null 2>&1 </dev/null & )
+   f="${TMPDIR:-/tmp}/caffeine-time.pid"
+   nohup /usr/bin/caffeinate -i -t SECONDS >/dev/null 2>&1 </dev/null & echo $! > "$f"
    ```
 
-   This asks macOS to stay awake for the duration without blocking the coding session. Do not use `pmset sleepnow` or any command that puts the computer to sleep.
-4. Tell the user the duration and approximate local time the awake request will end. Explain that closing the lid or manually sleeping/shutting down the Mac can still interrupt work; the timer only prevents automatic sleep while active.
+   Add `-d` only if the user asks to keep the display on. Never use `pmset` or change persistent power settings.
+5. Verify the PID from the pidfile is a running `caffeinate`. On failure, say so; never claim success.
+6. Report the duration, local end time, PID, and how to stop: `kill <pid>`. Lid close, manual sleep, or shutdown still interrupt it.
 
-## Examples
+Follow-up requests:
+- "How long left?": compute from `etime` and the started duration (`ps -o command=` shows `-t`).
+- "Stop caffeine": `kill` the pidfile's PID, verify it exited, remove the pidfile.
 
-- “Start a coding session” → keep the Mac awake for 2 hours 56 minutes.
-- “Start a coding session and keep it awake for 45 minutes” → keep it awake for 45 minutes.
-- “Give me three hours to code” → keep it awake for 3 hours.
+Never `killall caffeinate` or `pkill caffeinate`; other tools (such as start-issue-workforce) may own their own timers.

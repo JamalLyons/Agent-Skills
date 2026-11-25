@@ -1,6 +1,6 @@
 ---
 name: pr-follow-through
-description: Take an existing pull or merge request through review feedback, branch updates, and CI fixes to a verified merge-ready state. Use when asked to address PR feedback, fix its checks, or keep it ready. Discover the current forge and host tools; merging and deployment require their own authorization.
+description: Take an existing pull or merge request through review feedback, branch updates, and CI fixes to a verified merge-ready state. Use when asked to address PR comments or review feedback, fix failing checks, rebase or update a PR, or keep it ready to merge. Discover the current forge and host tools; merging and deployment require their own authorization. Do not use to review a PR (code-review) or create one from issues (start-issue-workforce).
 ---
 
 # PR follow-through

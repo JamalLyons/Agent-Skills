@@ -1,0 +1,27 @@
+{
+  "skill_name": "perf-investigation",
+  "evals": [
+    {
+      "id": "quadratic-fix",
+      "prompt": "The VIP report described in evals/fixtures/slow-report.md is too slow. Work only in the disposable fixture: measure it, find the cause, make it faster, and verify the result. Do not publish anything.",
+      "expected_output": "Run the benchmark with multiple runs and report a baseline with median/p95 or spread, timing load_orders and build_report separately and ideally across input sizes to show superlinear growth. Treat the database claim as a hypothesis and reject it with evidence (load_orders is a single fast batched call on an in-memory FakeDB). Identify the list membership check inside the loop in build_report as the O(n*m) cause, ideally confirmed with a profiler or scaling test. Make one bounded change (for example a set built from vip_ids) that preserves input order, running totals, and acceptance of any iterable, without adding a cache or index. Run check_orders before and after, re-measure under identical conditions, report baseline vs after numbers, consider a scaling or budget regression check, and state that results are local synthetic measurements, not production.",
+      "files": [
+        "evals/fixtures/orders.py",
+        "evals/fixtures/bench_orders.py",
+        "evals/fixtures/check_orders.py",
+        "evals/fixtures/slow-report.md"
+      ]
+    },
+    {
+      "id": "diagnose-only",
+      "prompt": "Diagnose why the VIP report in evals/fixtures/slow-report.md is slow and whether the database is to blame. I want measurements and an explanation only; do not change the supplied files, add files beside them, or publish anything. You may run the benchmark, tests, and non-mutating profiling.",
+      "expected_output": "Use actual benchmark runs (with repetitions and spread) and phase or scaling measurements, optionally a profiler, to show build_report dominates and grows superlinearly while load_orders is a single cheap call. Separate observed numbers from inference, identify the repeated list membership test as the likely cause, and propose a set-based correction with its expected effect plus a regression check, without claiming an unimplemented fix was measured. Leave all fixture files byte-for-byte unchanged, do not add an index or cache, do not publish, and note the measurements are local and synthetic.",
+      "files": [
+        "evals/fixtures/orders.py",
+        "evals/fixtures/bench_orders.py",
+        "evals/fixtures/check_orders.py",
+        "evals/fixtures/slow-report.md"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: improve-codebase-architecture
 license: MIT
-description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
+description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one the user picks. Use when the user asks for an architecture review, where to refactor, what is hard to change or test, or how to make the codebase easier for agents to navigate. Do not use to design one specific module's interface (codebase-design) or to review a diff (code-review).
 ---
 
 # Improve Codebase Architecture

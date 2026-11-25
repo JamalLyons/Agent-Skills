@@ -53,6 +53,9 @@ SKILL.md                  the workflow
 config.json               model tiers, usage overrides, routing knobs
 references/routing.md     difficulty rubric, dispatch, escalation, parallel waves
 references/brief-template.md, verification.md, pr-template.md
+references/worktree-gate.md, sleep-inhibitor.md, epic-intake.md
+references/execution.md, integration-review.md, follow-ups.md, state-recovery.md
+                          phase-specific detail loaded only when needed
 scripts/route.py          usage snapshot + per-step model suggestion
 scripts/detect_checks.sh  finds build/test/lint commands in a repo
 scripts/run_state.py      local canonical state, validated transitions, status/resume

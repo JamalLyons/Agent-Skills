@@ -1,0 +1,9 @@
+{
+  "name": "quill-config",
+  "version": "1.4.2",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test",
+    "release": "npm version $npm_config_bump && git push --follow-tags && npm publish"
+  }
+}

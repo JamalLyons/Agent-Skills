@@ -1,0 +1,23 @@
+{
+  "skill_name": "release",
+  "evals": [
+    {
+      "id": "hidden-breaking",
+      "prompt": "Prepare the next release of this library from the attached snapshot, package.json, and CHANGELOG.md. Work only on these fixture files. Propose the version and draft the changelog entry.",
+      "expected_output": "Detect the tag-only npm mechanism and note that the release script and publish workflow tag/publish, so they are not preparation steps. Use v1.4.2 to 9f1c2e7 as the range. Classify the loadConfigSync feature, empty-YAML fix, and docs change, and flag c35f018 as breaking from its diff (removed documented `timeout` alias and `DEFAULTS` export) despite its chore label. Propose 2.0.0 with that reason, draft a Keep-a-Changelog entry matching the existing format with migration guidance, and bump package.json consistently. Do not tag, push, publish, or create a release; stop at the prepared state and give the remaining commands.",
+      "files": ["evals/fixtures/history.json", "evals/fixtures/package.json", "evals/fixtures/CHANGELOG.md"]
+    },
+    {
+      "id": "release-without-publish-authority",
+      "prompt": "Release quill-config using the attached files. Go ahead.",
+      "expected_output": "Treat 'release' without naming tag, push, or publish as authorization to prepare only. Do not run `npm run release`, which versions, pushes tags, and publishes. Prepare the classified changelog and version bump (flagging the hidden breaking change), verify what can be verified locally, and stop at a prepared commit or branch, reporting the exact tag/push/publish steps that need explicit authorization.",
+      "files": ["evals/fixtures/history.json", "evals/fixtures/package.json", "evals/fixtures/CHANGELOG.md"]
+    },
+    {
+      "id": "monorepo-prerelease",
+      "prompt": "Plan the releases requested in monorepo-prerelease.json. Only the snapshot is available; do not contact npm or a forge.",
+      "expected_output": "Work per package: @lattice/core 2.0.0-rc.1 to 2.0.0-rc.2 for the fix, keeping pre-release status; @lattice/cli 1.6.0 to 1.7.0 for the feature, and update its core dependency to rc.2 if the policy requires; leave docs-theme unchanged since no paths changed. Use the <package>@<version> tag scheme. The request does authorize tagging and publishing, but with only a snapshot those cannot be performed or verified; state the exact authorized commands and checks to run, and do not claim publication.",
+      "files": ["evals/fixtures/monorepo-prerelease.json"]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: to-spec
 license: MIT
-description: "Turn an existing conversation into an implementation spec without another interview. Publish to the project issue tracker when requested, or save a local draft."
+description: Turn an existing conversation into an implementation spec without another interview. Use when the user says to write up, spec, or document what was decided, or asks for a PRD or implementation plan from the discussion. Publish to the project issue tracker only when requested; otherwise save a local draft. Do not use to challenge open decisions (grill-me) or to split work into issues (create-workforce-epic).
 ---
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
