@@ -1,0 +1,6 @@
+---
+description: Team style rules
+alwaysApply: true
+---
+- Components in packages/ui are named exports only; no default exports.
+- Use the generated types from @acme/api-client; never hand-write API response types.
