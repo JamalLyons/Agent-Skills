@@ -1,0 +1,15 @@
+# Execution: dispatch, integration, and commits
+
+Read before the first dispatch of section 3 and whenever a result, conflict, rework, or commit is handled. Attempt budgets stay in SKILL.md section 2; recovery is in [routing](routing.md).
+
+Sequential: exactly one writer in a shared checkout. Child leaves intended changes uncommitted; the lead verifies and commits. Parallel: only dependency-independent steps with disjoint write ownership, plus independent build/service resources. Use up to the lower of the user limit, runtime capacity, and 4 children; default to 2 unless more clearly helps. Distinct providers are useful within approved routing constraints, not mandatory.
+
+Parallel children use the host's supported isolated checkout mechanism (T3 `delegate_task` worktree isolation when on T3), based on the verified parent commit, with no required unpublished/uncommitted prerequisite omitted. Verify the reported checkout/base before integration. Only these children may create a step commit on their own branch; no push/PR/other branches. Use the host's actual checkout semantics; when it manages isolation, do not substitute shell-created child checkouts or setup commands in the prompt. Without supported isolation, execute sequentially.
+
+Record the task/agent ID, generation/attempt, actual provider/model/settings, checkout, base SHA, start/deadline, and status as soon as dispatch returns. Follow the host's `next` instruction; no polling loops, sleeping, or replacement while a task remains live. A question, wait timeout, refusal, tool error, and terminal failure are different states. Use [routing recovery](routing.md) before any retry.
+
+As each result arrives, inspect the exact changes and independently run relevant checks per [verification](verification.md). For worktree commits compare the recorded base to the returned SHA, including committed content; a clean `git diff` proves nothing about that commit. Integrate verified child commits serially. On conflict, preserve other work; resolve trivial conflicts and reverify, or abort only this cherry-pick and re-scope within the budget. Never replay an already integrated result.
+
+For real defects, make small corrections directly or issue bounded rework. New T3 review/re-check delegates are new `delegate_task` calls carrying the original brief and concrete findings, not messages into the old thread. Use native continuation only if supported by the actual runtime. Verify again after changes. Refusal/permission issues need scope correction or human resolution, not provider failover. Exhausted budgets mark a step blocked; continue only independent work whose checkout is clean of rejected partial changes.
+
+Stage only intended paths and inspect the index diff before committing; pre-existing staged changes must never be swept in. Follow repo commit conventions and genuine DCO/human trailers. Do not add AI attribution or change author/committer identity. Record accepted SHA and evidence. Keep out-of-scope or rejected artifacts for diagnosis without committing them; remove only files known to belong to this attempt.
