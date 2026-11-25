@@ -228,6 +228,16 @@ class ValidationTests(unittest.TestCase):
         self.assertIn('criterion C3: set exactly one', e)
         self.assertIn('"criteria" must list', self.errors(base_plan(criteria=[])))
 
+    def test_existing_issue_can_cover_criterion(self):
+        p = base_plan()
+        p['criteria'][0]['covered_by'] = ['#43']
+        self.assertEqual(validate_plan(p).criteria[0]['covered_by'], ['#43'])
+        n = new_epic_plan()
+        n['criteria'][0]['covered_by'] = ['#43']
+        self.assertIn('(covered by #43)', render_epic_body(validate_plan(n)))
+        p['criteria'][0]['covered_by'] = ['#0']
+        self.assertIn('unknown task "#0"', self.errors(p))
+
     def test_reserved_marker_rejected(self):
         p = base_plan()
         p['tasks'][0]['notes'] = '<!-- workforce-epic: {} -->'

@@ -8,13 +8,18 @@
     },
     {
       "id": "repeat-invocation",
-      "prompt": "Start a coding session. (A caffeine-time timer started 30 minutes ago is still running; its PID is in $TMPDIR/caffeine-time.pid.)",
-      "expected_output": "Detect the running timer via the pidfile and verify the PID is caffeinate; do not start a second caffeinate. Report remaining time (about 2h26m) and offer to extend/replace or keep it. Replace only after the user agrees, killing only that PID. Never run `killall caffeinate` or `pkill caffeinate`."
+      "prompt": "Start a coding session. (Observed state for this evaluation, since no live process can be supplied: $TMPDIR/caffeine-time.pid contains 4242, and `ps -o pid=,etime=,command= -p 4242` printed `4242 30:00 /usr/bin/caffeinate -i -t 10560`.)",
+      "expected_output": "Use the supplied pidfile and ps observation as this skill's running timer; do not start a second caffeinate. Report remaining time (about 2h26m) and offer to extend/replace or keep it. Replace only after the user agrees, killing only that PID. Never run `killall caffeinate` or `pkill caffeinate`."
     },
     {
       "id": "stop-timer",
       "prompt": "Stop caffeine.",
       "expected_output": "Read the PID from `$TMPDIR/caffeine-time.pid`, confirm it is caffeinate, `kill` only that PID, verify it exited, and remove the pidfile. If none is running, say so. Never use `killall` or `pkill`."
+    },
+    {
+      "id": "claimed-timer-missing",
+      "prompt": "Start a coding session. (I already started caffeine-time earlier and it should still be running.)",
+      "expected_output": "Check the pidfile and verify any PID is caffeinate. When no tracked timer is found, report what was checked and ask whether to start a fresh timer or adopt a specific PID; do not start a new caffeinate before the user answers. Never run `killall caffeinate` or `pkill caffeinate`."
     }
   ]
 }

@@ -40,7 +40,7 @@
 | `repo` | yes | `owner/name` |
 | `epic` | yes | Either the number of an open issue in `repo` (existing epic), or an object describing a new epic (below) |
 | `label` | no | Default `workforce`. Created if missing. Applied to every task issue (and to a new epic) so interrupted runs can find issues that were created but not yet linked |
-| `criteria[]` | yes | Every epic acceptance criterion. `id` is unique; set exactly one of `covered_by` (task keys) or `deferred` (reason) |
+| `criteria[]` | yes | Every epic acceptance criterion. `id` is unique; set exactly one of `covered_by` (task keys, or `"#n"` for an existing issue in the same repo that already covers it) or `deferred` (reason) |
 | `tasks[].key` | yes | Unique, stable across re-plans, letter first, up to 32 of `A-Z a-z 0-9 _ -` |
 | `title` | yes | 1–256 characters, written as the PR's intent |
 | `kind` | no | `agent` (default) or `human` |

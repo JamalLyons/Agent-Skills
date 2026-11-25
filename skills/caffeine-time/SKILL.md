@@ -9,8 +9,9 @@ Keep the Mac from idle-sleeping for the requested duration; default **2 hours 56
 
 1. Parse the duration (`90 minutes`, `1 hour 15 minutes`, etc.) to integer seconds; state any interpretation. macOS only; elsewhere use the native inhibitor if known, else explain.
 2. Check for this skill's timer: read the pidfile and confirm with `ps -o pid=,etime=,command= -p <pid>` that it is still `caffeinate`. A stale pidfile (no process, or not caffeinate) is removed. `pgrep -fl caffeinate` may show other timers; never touch those.
-3. If a timer is running, do not start another. Report its remaining time and offer to **extend** (replace with a new timer of the new total) or **keep** it. Replace only after the user agrees.
-4. Start (or replace: `kill <old pid>` first, only that PID):
+3. If the user says a timer is already running but step 2 finds none (no pidfile, or a stale one), do not start a new one: report what you checked and ask whether to start fresh or which PID to adopt.
+4. If a timer is running, do not start another. Report its remaining time and offer to **extend** (replace with a new timer of the new total) or **keep** it. Replace only after the user agrees.
+5. Start (or replace: `kill <old pid>` first, only that PID):
 
    ```sh
    f="${TMPDIR:-/tmp}/caffeine-time.pid"
@@ -18,8 +19,8 @@ Keep the Mac from idle-sleeping for the requested duration; default **2 hours 56
    ```
 
    Add `-d` only if the user asks to keep the display on. Never use `pmset` or change persistent power settings.
-5. Verify the PID from the pidfile is a running `caffeinate`. On failure, say so; never claim success.
-6. Report the duration, local end time, PID, and how to stop: `kill <pid>`. Lid close, manual sleep, or shutdown still interrupt it.
+6. Verify the PID from the pidfile is a running `caffeinate`. On failure, say so; never claim success.
+7. Report the duration, local end time, PID, and how to stop: `kill <pid>`. Lid close, manual sleep, or shutdown still interrupt it.
 
 Follow-up requests:
 - "How long left?": compute from `etime` and the started duration (`ps -o command=` shows `-t`).
