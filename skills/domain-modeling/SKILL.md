@@ -1,7 +1,7 @@
 ---
 name: domain-modeling
 license: MIT
-description: Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a GLOSSARY.md, or recording or editing an ADR.
+description: "Build and sharpen a project's domain model: shared terms, definitions, and recorded decisions. Use when discussing codebase terminology, naming concepts, writing or editing GLOSSARY.md, or recording or editing an ADR. Do not use for module interface design (codebase-design) or general plan review (grill-me)."
 ---
 
 # Domain Modeling

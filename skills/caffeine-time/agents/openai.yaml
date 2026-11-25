@@ -1,0 +1,3 @@
+interface:
+  display_name: "Caffeine Time"
+  short_description: "Keep the computer awake for a session"
