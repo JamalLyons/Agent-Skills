@@ -1,0 +1,7 @@
+{
+  "repository": "Agent-Skills checkout with scripts/evaluate.py and scripts/adapters/",
+  "installed_commands": ["python3", "git", "bash"],
+  "missing_commands": ["claude", "codex"],
+  "agent_api_credentials": "none configured",
+  "user_request": "Evaluate my code-review skill and tell me if it's worth keeping."
+}

@@ -1,0 +1,13 @@
+--- a/catalog.py
++++ b/catalog.py
+@@ -9,3 +9,3 @@
+-    if limit:
++    if limit is not None:
+         return matches[:limit]
+--- a/test_catalog.py
++++ b/test_catalog.py
+@@ -20,0 +21,3 @@
++def test_zero_limit():
++    assert search(ITEMS, "a", limit=0) == []
++
+(no test command output was recorded in this run)

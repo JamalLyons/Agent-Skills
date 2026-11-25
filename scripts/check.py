@@ -15,7 +15,7 @@ def main():
         if path.is_dir() and any(path.glob('test_*.py')):
             commands.append([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', str(path), '-v'])
     commands.append([sys.executable, '-B', str(ROOT / 'scripts/evaluate.py'), 'validate'])
-    shell_files = [ROOT / 'install.sh', *sorted((ROOT / 'skills').rglob('*.sh'))]
+    shell_files = [ROOT / 'install.sh', *sorted((ROOT / 'scripts').rglob('*.sh')), *sorted((ROOT / 'skills').rglob('*.sh'))]
     if shutil.which('bash'):
         commands.extend(['bash', '-n', str(path)] for path in shell_files)
     else:
