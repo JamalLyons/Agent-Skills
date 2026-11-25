@@ -2,5 +2,5 @@
   "name": "@acme/web",
   "private": true,
   "scripts": { "dev": "next dev", "build": "next build", "test": "vitest run", "lint": "eslint ." },
-  "dependencies": { "@acme/ui": "workspace:*", "@acme/api-client": "workspace:*", "next": "15.0.2" }
+  "dependencies": { "@acme/ui": "workspace:*", "@acme/api-client": "workspace:*", "next": "15.5.29" }
 }
