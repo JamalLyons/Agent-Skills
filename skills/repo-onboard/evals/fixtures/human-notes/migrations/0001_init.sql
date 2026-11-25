@@ -1,0 +1,1 @@
+CREATE TABLE entries (id INTEGER PRIMARY KEY, amount_cents INTEGER NOT NULL);

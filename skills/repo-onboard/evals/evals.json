@@ -1,0 +1,66 @@
+{
+  "skill_name": "repo-onboard",
+  "evals": [
+    {
+      "id": "ci-over-readme",
+      "prompt": "Onboard the repository in evals/fixtures/pnpm-drift/ for coding agents: write an AGENTS.md at its root. Work only inside that directory, do not use the network, and do not commit anything.",
+      "expected_output": "Creates only evals/fixtures/pnpm-drift/AGENTS.md. Commands come from CI and package.json: pnpm (packageManager pnpm@9.12.0, pnpm-lock.yaml), `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format`, plus a single-test form using vitest. It does not repeat README's `npm install`/`npm test`, and it reports the README drift (npm vs pnpm, tests in `test/`, not `__tests__/`) without editing README.md. Mentions Node 20 and TZ=UTC from CI. Commands it could not run offline are marked unverified with a reason, and it does not claim they passed. Map covers src/ and test/. Under 150 lines, no generic coding advice.",
+      "files": [
+        "evals/fixtures/pnpm-drift/package.json",
+        "evals/fixtures/pnpm-drift/pnpm-lock.yaml",
+        "evals/fixtures/pnpm-drift/README.md",
+        "evals/fixtures/pnpm-drift/.github/workflows/ci.yml",
+        "evals/fixtures/pnpm-drift/tsconfig.json",
+        "evals/fixtures/pnpm-drift/src/parse.ts",
+        "evals/fixtures/pnpm-drift/test/parse.test.ts"
+      ]
+    },
+    {
+      "id": "refresh-preserves-human-notes",
+      "prompt": "Agents keep running the wrong test command in evals/fixtures/human-notes/. Update its agent instructions so they are correct. Also make it work for tools that read AGENTS.md. Stay inside that directory and do not commit.",
+      "expected_output": "Detects the existing CLAUDE.md and refreshes rather than duplicating. Replaces the stale `pip install -r requirements.txt` (no such file) and `make test` (no such target) with uv-based commands evidenced by uv.lock, pyproject.toml, and the Makefile: e.g. `uv sync`, `make check` / `uv run pytest -q`, `uv run ruff check src tests`, and a single-test form such as `uv run pytest tests/test_core.py::test_add_cents`. Runs or marks each command unverified. Keeps all three maintainer notes (integer cents, ask Priya before migrations/, keep legacy_ functions) word for word. Makes exactly one file canonical and the other a pointer/import (e.g. CLAUDE.md containing `@AGENTS.md`), with no competing duplicated content. Reports which commands changed and what was preserved. No source, Makefile, or pyproject edits.",
+      "files": [
+        "evals/fixtures/human-notes/CLAUDE.md",
+        "evals/fixtures/human-notes/pyproject.toml",
+        "evals/fixtures/human-notes/uv.lock",
+        "evals/fixtures/human-notes/Makefile",
+        "evals/fixtures/human-notes/src/ledger/__init__.py",
+        "evals/fixtures/human-notes/src/ledger/core.py",
+        "evals/fixtures/human-notes/tests/test_core.py",
+        "evals/fixtures/human-notes/migrations/0001_init.sql"
+      ]
+    },
+    {
+      "id": "monorepo-map-and-generated",
+      "prompt": "Init agent instructions for the monorepo in evals/fixtures/monorepo/. Use AGENTS.md. Don't install anything from the network and don't commit.",
+      "expected_output": "Creates evals/fixtures/monorepo/AGENTS.md and leaves .cursor/rules/style.mdc in place, either referencing it or carrying its rules without contradicting them. Map lists apps/web (Next.js, @acme/web), packages/ui (@acme/ui), and packages/api-client (@acme/api-client) from pnpm-workspace.yaml and the package manifests. Commands are root turbo scripts (`pnpm build`, `pnpm test`, `pnpm lint`) plus per-package filtering (e.g. `pnpm --filter @acme/web test`), and it notes api-client has no test script. Flags packages/api-client/src/generated/ as generated and not to be edited by hand, regenerated via `pnpm codegen` from openapi.yaml, and notes CI fails on a codegen diff. Mentions apps/web/.env.example (NEXT_PUBLIC_API_URL), Node 22, frozen lockfile, and PRs targeting main. Marks network-dependent commands unverified rather than claiming success. Under 150 lines.",
+      "files": [
+        "evals/fixtures/monorepo/package.json",
+        "evals/fixtures/monorepo/pnpm-workspace.yaml",
+        "evals/fixtures/monorepo/turbo.json",
+        "evals/fixtures/monorepo/openapi.yaml",
+        "evals/fixtures/monorepo/.cursor/rules/style.mdc",
+        "evals/fixtures/monorepo/.github/workflows/ci.yml",
+        "evals/fixtures/monorepo/apps/web/package.json",
+        "evals/fixtures/monorepo/apps/web/.env.example",
+        "evals/fixtures/monorepo/apps/web/src/page.tsx",
+        "evals/fixtures/monorepo/packages/ui/package.json",
+        "evals/fixtures/monorepo/packages/ui/src/index.ts",
+        "evals/fixtures/monorepo/packages/ui/src/button.tsx",
+        "evals/fixtures/monorepo/packages/api-client/package.json",
+        "evals/fixtures/monorepo/packages/api-client/src/index.ts",
+        "evals/fixtures/monorepo/packages/api-client/src/generated/schema.ts"
+      ]
+    },
+    {
+      "id": "out-of-scope-glossary",
+      "prompt": "For the repo in evals/fixtures/human-notes/, write a GLOSSARY.md defining ledger, entry, and cents, and record an ADR explaining why amounts are integers.",
+      "expected_output": "Recognizes this is domain glossary/ADR work, not agent-instruction onboarding. Does not create or rewrite AGENTS.md/CLAUDE.md for this request and points to domain-modeling (or does the glossary work without applying repo-onboard's process). Makes no edits to the existing CLAUDE.md.",
+      "files": [
+        "evals/fixtures/human-notes/CLAUDE.md",
+        "evals/fixtures/human-notes/pyproject.toml",
+        "evals/fixtures/human-notes/src/ledger/core.py"
+      ]
+    }
+  ]
+}
