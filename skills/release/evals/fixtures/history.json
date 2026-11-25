@@ -1,0 +1,30 @@
+{
+  "repository": "example/quill-config",
+  "snapshot_note": "Synthetic pinned snapshot; no live forge or registry access.",
+  "release_mechanism_hints": {
+    "files_present": ["package.json", "CHANGELOG.md", ".github/workflows/publish.yml"],
+    "publish_workflow": "on: push tags 'v*' -> npm publish --provenance",
+    "changesets": false,
+    "release_please": false
+  },
+  "tags": ["v1.3.0", "v1.4.0", "v1.4.1", "v1.4.2"],
+  "head": "9f1c2e7",
+  "commits_since_v1.4.2": [
+    {"sha": "a11b3c0", "message": "feat: add loadConfigSync helper", "pr": 41},
+    {"sha": "b27d9e4", "message": "fix: handle empty YAML documents", "pr": 42},
+    {"sha": "c35f018", "message": "chore: tidy option normalization", "pr": 43},
+    {"sha": "d4e6a21", "message": "docs: fix README typo", "pr": 44}
+  ],
+  "merged_prs": [
+    {"number": 41, "title": "Add loadConfigSync helper", "labels": ["enhancement"]},
+    {"number": 42, "title": "Handle empty YAML documents", "labels": ["bug"]},
+    {"number": 43, "title": "Tidy option normalization", "labels": ["chore"], "body": "Internal cleanup, no behavior change."},
+    {"number": 44, "title": "Fix README typo", "labels": ["docs"]}
+  ],
+  "diffs": {
+    "c35f018": "--- a/src/options.js\n+++ b/src/options.js\n@@ export function normalizeOptions(opts = {}) {\n-  const timeoutMs = opts.timeoutMs ?? opts.timeout ?? 5000;\n+  const timeoutMs = opts.timeoutMs ?? 5000;\n@@\n-export { normalizeOptions, DEFAULTS };\n+export { normalizeOptions };\n",
+    "a11b3c0": "--- a/src/index.js\n+++ b/src/index.js\n+export function loadConfigSync(path, opts) { return parse(readFileSync(path, 'utf8'), opts); }\n",
+    "b27d9e4": "--- a/src/parse.js\n+++ b/src/parse.js\n-  return yaml.load(text);\n+  return yaml.load(text) ?? {};\n"
+  },
+  "public_api_note": "README documents both `timeout` (alias) and `DEFAULTS` as public exports since v1.2.0."
+}
