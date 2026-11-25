@@ -23,6 +23,6 @@ jobs:
       - name: Validate agent configurations
         uses: agent-sh/agnix@fefbece836bd558bbbc0847633f995d8138e8f08
         with:
-          version: 0.61.0
+          version: v0.61.0
           strict: false
       - run: python3 -B scripts/check.py
