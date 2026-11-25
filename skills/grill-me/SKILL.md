@@ -1,7 +1,7 @@
 ---
 name: grill-me
 license: MIT
-description: Stress-test a plan, decision, or design through dependency-ordered questions and recommended answers. Use when the user asks to be grilled or wants assumptions challenged before implementation.
+description: Stress-test a plan, decision, or design through dependency-ordered questions with recommended answers. Use when the user asks to be grilled, wants assumptions challenged, or wants a plan pressure-tested before implementation. Do not use once decisions are settled and need writing up (to-spec), or for domain terminology (domain-modeling).
 ---
 
 Stress-test consequential decisions until the material uncertainties are resolved. Map them as a **design tree**: each decision may unlock decisions that depend on it. Skip routine implementation choices and answers already established.

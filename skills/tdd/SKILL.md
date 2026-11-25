@@ -1,7 +1,7 @@
 ---
 name: tdd
 license: MIT
-description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
+description: Test-driven development through vertical red-green-refactor slices at public seams. Use when the user wants to build a feature or fix a bug test-first, mentions TDD or red-green-refactor, or asks for tests that drive the implementation. Do not use merely to add coverage to finished code, or to diagnose an unknown failure (bug-investigation).
 ---
 
 # Test-Driven Development
