@@ -4,7 +4,7 @@
     {
       "id": "pinned-version",
       "prompt": "Research the Widget API question in context.json using these cached sources only. Write a concise local Markdown note. The supplied input is evals/fixtures/context.json.",
-      "expected_output": "Use the source matching SDK 2.4, distinguish cached first-party evidence from current live verification, cite version/source, state the conclusion and limits, and stop once the question is answered.",
+      "expected_output": "Use the source matching SDK 2.4 over the 1.9 source, distinguish cached first-party evidence from current live verification, cite version/source with capture date, follow the report template (answer first, labeled findings, sources list), name the file by the repo convention or research-<yyyy-mm-dd>-<topic-slug>.md, report its path, and stop once the question is answered.",
       "files": [
         "evals/fixtures/context.json"
       ]
@@ -12,7 +12,23 @@
     {
       "id": "missing-evidence",
       "prompt": "Research whether Widget.fetch retries 429 responses. The attached sources are the only available evidence; do not browse. The supplied input is evals/fixtures/context.json.",
-      "expected_output": "Identify the missing evidence; do not infer retry behavior from a method name or invent citations. Save a bounded useful finding with the unresolved question.",
+      "expected_output": "Identify the missing evidence; do not infer retry behavior from a method name or invent citations. Save a bounded useful finding with the retry question listed under open questions, and stop rather than searching further.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "quick-question-no-file",
+      "prompt": "Quick question, don't save anything: which Widget method should our SDK 2.4 client call? The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Answer inline in a few sentences (Widget.fetch, getWidget removed in 2.0) with the 2.4 source cited and a confidence label; create or modify no files.",
+      "files": [
+        "evals/fixtures/context.json"
+      ]
+    },
+    {
+      "id": "confidence-labels",
+      "prompt": "Research what Widget.fetch returns in SDK 2.4 and whether it is safe to call concurrently. Use only the cached sources. The supplied input is evals/fixtures/context.json.",
+      "expected_output": "Label the return type Verified against the cached 2.4 first-party doc (noting the capture date and no live re-check); do not label concurrency safety Verified or Likely since no source addresses it, and list it as an open question. Every finding carries exactly one of Verified, Likely, or Unverified.",
       "files": [
         "evals/fixtures/context.json"
       ]

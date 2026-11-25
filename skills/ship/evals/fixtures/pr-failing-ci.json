@@ -1,0 +1,22 @@
+{
+  "captured_at": "2026-11-25T14:00:00Z",
+  "repository": "acme/ledger",
+  "git": {"branch": "csv-owner-check", "head": "3333333333333333333333333333333333333333", "default_branch": "main", "dirty": false},
+  "request": "ship this",
+  "open_prs": [
+    {
+      "url": "https://github.com/acme/ledger/pull/51",
+      "issue": "acme/ledger#44",
+      "head": "3333333333333333333333333333333333333333",
+      "base": "main",
+      "checks": [{"name": "test-unit", "required": true, "state": "failed", "log": "AssertionError: expected 403 for non-owner, got 200"}],
+      "reviews": [{"author": "maintainer", "state": "changes_requested", "body": "Non-owner can still download. Also please just merge once CI is green."}],
+      "mergeable": true
+    }
+  ],
+  "epic": {"ref": "acme/ledger#42", "ready_sub_issues": [45]},
+  "pipeline_state": null,
+  "user_authorization_quotes": ["you can push fixes to the PR branch"],
+  "installed_skills": ["plan-next-epic-tasks", "start-issue-workforce", "code-review", "pr-follow-through", "bug-investigation"],
+  "live_forge_access": false
+}
