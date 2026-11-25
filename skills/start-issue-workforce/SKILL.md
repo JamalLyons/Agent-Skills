@@ -1,6 +1,6 @@
 ---
 name: start-issue-workforce
-description: Implement one or more GitHub issues through scoped agents, usage-aware model routing, lead verification, and one pull request per issue or an explicitly requested combined PR. Use for issue implementation and backlog workforce requests, including planning and delegation. Do not use for issue questions, triage, or reviewing this skill or an existing PR.
+description: Implement one or more GitHub issues through scoped agents, usage-aware model routing, lead verification, and one pull request per issue or an explicitly requested combined PR. Use when the user asks to implement, work on, or ship GitHub issues, an epic's sub-issues, a label or milestone backlog, or to run the workforce. Requires GitHub and the gh CLI or equivalent API access. Do not use for issue questions, triage, choosing the next tasks (plan-next-epic-tasks), or reviewing this skill or an existing PR.
 ---
 
 # Start Issue Workforce

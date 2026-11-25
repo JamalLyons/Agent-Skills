@@ -1,6 +1,6 @@
 ---
 name: caffeine-time
-description: Start a coding session and keep the computer awake for a specified duration so work is not interrupted. Use when the user asks to begin coding without the computer sleeping; defaults to 2 hours 56 minutes.
+description: Keep a Mac awake for a coding session for a set duration, defaulting to 2 hours 56 minutes, without stacking duplicate timers; also extend, check, or stop that timer. Use when the user asks to start a coding session, keep the computer awake, stop it sleeping, or stop or extend caffeine. macOS-first; other platforms use their native inhibitor if known.
 ---
 
 # Caffeine Time
