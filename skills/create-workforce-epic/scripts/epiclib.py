@@ -272,6 +272,8 @@ def validate_plan(data: Any, max_tasks: int = MAX_TASKS) -> Plan:
                 errs.append(f'{where}: "covered_by" must be a list of task keys')
             else:
                 for x in cov:
+                    if EXTERNAL_RE.match(x):
+                        continue  # existing issue in this repo, e.g. "#43"
                     if x not in deps:
                         errs.append(f'{where}: covered_by unknown task "{x}"')
                     covered.add(x)
@@ -376,7 +378,8 @@ def render_epic_body(plan: Plan) -> str:
         if c.get('deferred'):
             crit.append(f'- **{c["id"]}** (deferred): {c["text"]}. {c["deferred"]}')
         else:
-            crit.append(f'- [ ] **{c["id"]}**: {c["text"]}')
+            ext = [x for x in c.get('covered_by') or [] if EXTERNAL_RE.match(x)]
+            crit.append(f'- [ ] **{c["id"]}**: {c["text"]}' + (f' (covered by {", ".join(ext)})' if ext else ''))
     parts.append('## Acceptance criteria\n' + '\n'.join(crit))
     if spec['out_of_scope']:
         parts.append('## Out of scope\n' + _bullets(spec['out_of_scope']))

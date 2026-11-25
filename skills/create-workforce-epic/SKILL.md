@@ -40,7 +40,7 @@ For an existing epic, run `python3 <skill-dir>/scripts/epic_status.py --repo R -
 
 ## 2. Decompose
 
-Apply the [rubric](references/decomposition.md). In short: one task is one reviewable PR that leaves the default branch building and passing; shared interfaces come first as foundation tasks; prefer vertical slices; tasks that can run in parallel own disjoint paths; dependencies are real code dependencies, kept shallow; anything only a person can do (decisions, credentials, signing, accounts, deploys, approvals) is a `human` task; tier by the start-issue-workforce rubric (unsure → hard); every epic criterion is covered by a task or deferred with a reason. Do not add scope the epic does not ask for. Surface discovered prerequisites as questions or human tasks.
+Apply the [rubric](references/decomposition.md). In short: one task is one reviewable PR that leaves the default branch building and passing; shared interfaces come first as foundation tasks; prefer vertical slices; tasks that can run in parallel own disjoint paths; dependencies are real code dependencies, kept shallow; anything only a person can do (decisions, credentials, signing, accounts, deploys, approvals) is a `human` task; tier by the start-issue-workforce rubric (unsure → hard); every epic criterion is covered by a task, by an existing issue (`"#n"` in `covered_by`), or deferred with a reason. Do not add scope the epic does not ask for. Surface discovered prerequisites as questions or human tasks.
 
 Above 15 tasks, propose splitting into phase epics instead of one large plan. The script refuses more than 50.
 
@@ -52,7 +52,7 @@ Write the plan as JSON per [plan format](references/plan-format.md). Save it at 
 2. `python3 <skill-dir>/scripts/apply_plan.py apply <plan>`: a dry run that reads GitHub and lists every reuse, create, sub-issue link, and blocked-by write. Nothing is written.
 3. Present one gate: for a new epic, its title and body (from `render`); a task table (key, title, agent tier or human, blocked by, owned paths), a Mermaid dependency graph, criteria coverage including deferred items, human tasks, warnings, the dry-run write list (issue count, label creation), and open questions. Offer `render --task <key>` to show an exact issue body.
 
-Stop at the gate unless the user already authorized creation for this plan ("go ahead and file them"). A plan-only or "break this down" request stops here. After any plan change, validate and dry-run again; approval covers the plan that was shown.
+Stop at the gate unless the user already authorized creation for this plan ("go ahead and file them"). A plan-only or "break this down" request stops here. When creation is already authorized, do not ask for it again: go straight to Apply. If writes are impossible (no GitHub access, writes disabled), say exactly that and what is ready to run; that is a blocked step, not a new approval gate. After any plan change, validate and dry-run again; approval covers the plan that was shown.
 
 ## 4. Apply
 
