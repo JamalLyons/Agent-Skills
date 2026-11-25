@@ -22,6 +22,11 @@ To install somewhere else, use `./install.sh --target /path/to/skills` (repeatab
 
 ## Skills
 
+### Start here
+
+- [ship](skills/ship/SKILL.md) — Work out where a feature is in the pipeline and route to the right skill.
+- [repo-onboard](skills/repo-onboard/SKILL.md) — Create or refresh AGENTS.md/CLAUDE.md with verified commands and a repo map.
+
 ### Plan and explore
 
 - [grill-me](skills/grill-me/SKILL.md) — Challenge a plan and resolve assumptions.
@@ -37,12 +42,21 @@ To install somewhere else, use `./install.sh --target /path/to/skills` (repeatab
 - [frontend-design](skills/frontend-design/SKILL.md) — Create distinctive, intentional visual design for web interfaces.
 - [code-review](skills/code-review/SKILL.md) — Review correctness, regressions, project standards, and spec fidelity.
 - [bug-investigation](skills/bug-investigation/SKILL.md) — Reproduce a failure, test competing explanations, and verify a bounded fix.
+- [perf-investigation](skills/perf-investigation/SKILL.md) — Measure, profile, and fix performance problems against a baseline.
+- [dependency-upgrade](skills/dependency-upgrade/SKILL.md) — Upgrade dependencies or runtimes using cited changelogs and a test baseline.
+- [release](skills/release/SKILL.md) — Prepare a versioned release and changelog; publishing needs explicit approval.
 - [pr-follow-through](skills/pr-follow-through/SKILL.md) — Address review and CI blockers on an existing pull or merge request.
 - [wizard](skills/wizard/SKILL.md) — Generate an interactive script for manual setup steps.
 - [handoff](skills/handoff/SKILL.md) — Prepare a fresh agent to continue the work.
 - [create-workforce-epic](skills/create-workforce-epic/SKILL.md) — Break a GitHub epic into scoped, dependent issues.
 - [plan-next-epic-tasks](skills/plan-next-epic-tasks/SKILL.md) — Pick the next tasks of an epic in implementation order.
 - [start-issue-workforce](skills/start-issue-workforce/SKILL.md) — Take GitHub issues through implementation, verification, and pull requests.
+- [caffeine-time](skills/caffeine-time/SKILL.md) — Keep the computer awake for a coding session.
+
+### Improve the skills
+
+- [skill-eval](skills/skill-eval/SKILL.md) — Measure whether a skill beats a no-skill baseline on its eval cases.
+- [skill-retro](skills/skill-retro/SKILL.md) — Turn a real session's failure into a minimal skill fix and a new eval case.
 
 ## Use
 
