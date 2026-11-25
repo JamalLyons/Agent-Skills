@@ -1,0 +1,3 @@
+interface:
+  display_name: "Ship"
+  short_description: "Route a feature to the right pipeline skill for its stage"

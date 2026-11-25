@@ -1,0 +1,11 @@
+{
+  "captured_at": "2026-11-25T14:00:00Z",
+  "repository": "acme/ledger",
+  "git": {"branch": "main", "head": "4444444444444444444444444444444444444444", "default_branch": "main", "dirty": false},
+  "request": "Take this from idea to PR: the large GitHub issue acme/ledger#60 'Multi-currency statements'.",
+  "issues": [{"ref": "acme/ledger#60", "title": "Multi-currency statements", "sub_issues": [], "body": "Goal: show balances in the account's currency. Acceptance: C1 per-account currency shown; C2 totals converted at statement date rate."}],
+  "open_prs": [],
+  "pipeline_state": null,
+  "installed_skills": ["ship", "to-spec", "code-review"],
+  "live_forge_access": false
+}

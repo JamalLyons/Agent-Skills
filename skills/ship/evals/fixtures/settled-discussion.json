@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-11-25T14:00:00Z",
+  "repository": "acme/ledger",
+  "git": {"branch": "main", "head": "1111111111111111111111111111111111111111", "default_branch": "main", "dirty": false},
+  "conversation": [
+    {"role": "user", "text": "Let's add CSV export to the statements page."},
+    {"role": "assistant", "text": "Decisions so far: columns match the on-screen table order; dates as ISO 8601; owner-only access; empty statement exports a header row. Anything open?"},
+    {"role": "user", "text": "No, that's all settled. Ship this. Don't publish anything to the tracker yet."}
+  ],
+  "specs_in_repo": [],
+  "issues": [],
+  "open_prs": [],
+  "pipeline_state": null,
+  "installed_skills": ["research", "grill-me", "to-spec", "create-workforce-epic", "plan-next-epic-tasks", "start-issue-workforce", "code-review", "pr-follow-through"],
+  "live_forge_access": false
+}
