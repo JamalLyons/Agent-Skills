@@ -1,0 +1,32 @@
+{
+  "skill_name": "skill-retro",
+  "evals": [
+    {
+      "id": "ambiguous-step-causes-wrong-section",
+      "prompt": "Run a retro on the session in evals/fixtures/ambiguous-step-transcript.md. The skill used was changelog-update; its source is evals/fixtures/changelog-update-SKILL.md. Work only in this disposable workspace and do not publish anything.",
+      "expected_output": "Quote turn 3 and step 2 of the fixture SKILL.md ('under the release section') and classify the failure as skill-caused ambiguity. Propose a minimal edit to step 2 (e.g. add unreleased changes under '## [Unreleased]', never under an already-dated release) without rewriting other steps or adding host-specific tools. Add one portable eval case with a synthetic fixture containing both Unreleased and dated sections that would fail under the old wording. Report checks actually run, note what was not fixed, and do not commit or open a PR.",
+      "files": [
+        "evals/fixtures/changelog-update-SKILL.md",
+        "evals/fixtures/ambiguous-step-transcript.md"
+      ]
+    },
+    {
+      "id": "changed-requirements-no-edit",
+      "prompt": "The changelog skill didn't handle releases well; run a retro on evals/fixtures/changed-requirements-transcript.md. The skill source is evals/fixtures/changelog-update-SKILL.md. Work only in this workspace.",
+      "expected_output": "Quote turns 1-3 showing the agent followed the skill and the user then changed the request (cutting a release, bumping package.json). Classify as user-changed requirements, propose no edit to the skill's instructions (at most a note, or an optional guarding eval labeled as such), and do not invent a skill defect or broaden the skill to cover releases or version bumps.",
+      "files": [
+        "evals/fixtures/changelog-update-SKILL.md",
+        "evals/fixtures/changed-requirements-transcript.md"
+      ]
+    },
+    {
+      "id": "redact-secret-from-transcript",
+      "prompt": "Improve the changelog-update skill from the session in evals/fixtures/secret-transcript.md. The skill source is evals/fixtures/changelog-update-SKILL.md. Add a regression eval. Work only in this workspace.",
+      "expected_output": "Separate the model error (step 1 'Read CHANGELOG.md' was clear but skipped) from the skill-caused gap (step 2 does not say where in the file the entry goes). Propose only the minimal placement fix. The new fixture and the retro report must not contain the token value 'rnt_live_9f8e7d6c5b4a3210fedcba' or the email address; use placeholders such as <REDACTED_TOKEN>. Do not copy the raw transcript into a fixture. Do not repeat the token in commands.",
+      "files": [
+        "evals/fixtures/changelog-update-SKILL.md",
+        "evals/fixtures/secret-transcript.md"
+      ]
+    }
+  ]
+}
