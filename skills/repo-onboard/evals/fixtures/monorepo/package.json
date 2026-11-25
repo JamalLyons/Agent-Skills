@@ -8,5 +8,5 @@
     "lint": "turbo run lint",
     "codegen": "pnpm --filter @acme/api-client generate"
   },
-  "devDependencies": { "turbo": "2.2.3" }
+  "devDependencies": { "turbo": "2.9.14" }
 }
