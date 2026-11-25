@@ -1,7 +1,7 @@
 ---
 name: handoff
 license: MIT
-description: Compact the current conversation into a handoff document for another agent to pick up.
+description: Compact the current conversation into a handoff document so a fresh agent can continue the work. Use when the user asks for a handoff, wants to continue in a new session or another agent, is near a context limit, or says to save progress for later. Do not use to write a spec (to-spec) or a permanent project document.
 ---
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work. By default save a uniquely named file, such as `handoff-<timestamp>-<random>.md`, in the user's OS temporary directory (`$TMPDIR`, else `/tmp`; `%TEMP%` on Windows), using exclusive creation or the host's unique-file mechanism. Do not overwrite another handoff. Use a durable project location only when the user requests one, following the repository's convention.

@@ -1,6 +1,6 @@
 ---
 name: bug-investigation
-description: Diagnose an existing failure through reproduction, competing hypotheses, and discriminating evidence; make a bounded fix and regression check when requested. Use for debugging symptoms, intermittent failures, or regressions. A diagnosis-only request does not authorize edits or publication.
+description: Diagnose an existing failure through reproduction, competing hypotheses, and discriminating evidence; make a bounded fix and regression check when requested. Use for debugging errors, failing tests, crashes, wrong output, flaky or intermittent failures, or regressions. A diagnosis-only request does not authorize edits or publication. Do not use for building new features test-first (tdd) or reviewing a diff (code-review).
 ---
 
 # Bug investigation
