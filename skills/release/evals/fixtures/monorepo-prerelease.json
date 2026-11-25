@@ -1,0 +1,15 @@
+{
+  "repository": "example/lattice",
+  "snapshot_note": "Synthetic pinned snapshot; no live access.",
+  "versioning": "independent per package; no changesets; tags are <package>@<version>",
+  "packages": {
+    "packages/core": {"name": "@lattice/core", "version": "2.0.0-rc.1", "last_tag": "@lattice/core@2.0.0-rc.1"},
+    "packages/cli": {"name": "@lattice/cli", "version": "1.6.0", "last_tag": "@lattice/cli@1.6.0", "dependencies": {"@lattice/core": "2.0.0-rc.1"}},
+    "packages/docs-theme": {"name": "@lattice/docs-theme", "version": "0.3.1", "last_tag": "@lattice/docs-theme@0.3.1"}
+  },
+  "commits_since_last_tags": [
+    {"sha": "e01", "message": "fix(core): guard against null edges", "paths": ["packages/core/src/graph.ts"]},
+    {"sha": "e02", "message": "feat(cli): add --json output", "paths": ["packages/cli/src/main.ts"]}
+  ],
+  "user_request": "Cut the next core release candidate and release the CLI too. Tag and publish both to npm."
+}

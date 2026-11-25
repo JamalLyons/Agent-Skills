@@ -1,0 +1,8 @@
+{
+  "snapshot_note": "Synthetic pinned context; no registry, network, or install is available.",
+  "lockfile": {"file": "pnpm-lock.yaml", "fastqueue": "3.4.1", "dayjs": "1.11.10"},
+  "node": {".nvmrc": "18.19.0"},
+  "baseline": {"command": "pnpm test", "result": "1 failing: test/reports.test.ts (timezone assertion, unrelated to queue)"},
+  "renovate_pr": {"title": "Update dependency fastqueue to v5", "diff_summary": "package.json ^3.4.0 -> ^5.0.0; lockfile also moves dayjs 1.11.10 -> 1.11.13 and vitest 2.1.0 -> 2.1.8"},
+  "advisory": {"id": "GHSA-xxxx-synthetic", "package": "fastqueue", "vulnerable": ">=3.0.0 <3.5.2", "patched": "3.5.2"}
+}

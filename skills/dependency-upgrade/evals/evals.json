@@ -1,0 +1,17 @@
+{
+  "skill_name": "dependency-upgrade",
+  "evals": [
+    {
+      "id": "major-upgrade-removed-api",
+      "prompt": "Upgrade fastqueue to v5 in the attached fixture project (package.json, jobs.ts). Use the attached changelog excerpt and context; no network or install is available. Edit only the fixture files.",
+      "expected_output": "Inventory 3.4.1 locked and Node 18.19.0, cite the changelog excerpt as the only available source, and note the registry/upstream pages are unavailable. Identify the breaking changes that touch jobs.ts: onFailed removed (use on('failed')), delay renamed to delayMs, and retry.attempts semantics changing (attempts: 3 now means 2 retries; preserve behavior with 4 or flag it). Note drain() and the Node floor were checked and do not apply. Plan 3 to 4 to 5 increments, change only fastqueue, and leave dayjs/vitest alone. State that the lockfile must be regenerated with pnpm and tests rerun, which could not happen here; keep the baseline reports.test.ts failure classified as pre-existing. Do not claim a verified upgrade.",
+      "files": ["evals/fixtures/package.json", "evals/fixtures/jobs.ts", "evals/fixtures/fastqueue-changelog.md", "evals/fixtures/upgrade-context.json"]
+    },
+    {
+      "id": "security-advisory-minimal",
+      "prompt": "Resolve the fastqueue security advisory in upgrade-context.json with the smallest safe change. Analysis and fixture edits only; nothing to publish.",
+      "expected_output": "Confirm 3.4.1 is in the vulnerable range and choose the minimal patched version 3.5.2 on the current major rather than the Renovate v5 bump, citing the advisory and changelog. Note no breaking changes apply within 3.x per the excerpt. Change only the fastqueue range, without the Renovate PR's collateral dayjs/vitest moves. State the pnpm lockfile regeneration and test rerun required against the recorded baseline, and do not claim they ran.",
+      "files": ["evals/fixtures/package.json", "evals/fixtures/fastqueue-changelog.md", "evals/fixtures/upgrade-context.json"]
+    }
+  ]
+}
