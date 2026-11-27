@@ -1,0 +1,3 @@
+interface:
+  display_name: "Docs Drift"
+  short_description: "Sweep and fix documentation that has drifted from code, CI, or issues"

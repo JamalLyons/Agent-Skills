@@ -1,0 +1,28 @@
+{
+  "skill_name": "docs-drift",
+  "evals": [
+    {
+      "id": "stale-readme-and-historical-exclusions",
+      "prompt": "Run a docs-drift sweep on evals/fixtures/cli-drift/. Work only inside that directory, do not use the network, and do not commit anything.",
+      "expected_output": "Updates evals/fixtures/cli-drift/README.md in place to fix the stale `--format yaml` flag (valid choices in src/cli.py are `text` and `json`) and the stale test directory `test` (tests live in `tests/`). Updates ROADMAP.md so `toolbelt sync` is not marked shipped when no code or test implements it. Leaves docs/reviews/2026-01-review.md and the Context section of docs/adr/0001-json-output.md unchanged. Makes no changes to src/cli.py or tests/test_cli.py, and presents a Drift report with Fixed, Recommendations, and Checked, no change sections.",
+      "files": [
+        "evals/fixtures/cli-drift/README.md",
+        "evals/fixtures/cli-drift/ROADMAP.md",
+        "evals/fixtures/cli-drift/src/cli.py",
+        "evals/fixtures/cli-drift/tests/test_cli.py",
+        "evals/fixtures/cli-drift/docs/reviews/2026-01-review.md",
+        "evals/fixtures/cli-drift/docs/adr/0001-json-output.md"
+      ]
+    },
+    {
+      "id": "offline-tracker-and-deferred-website",
+      "prompt": "Sweep evals/fixtures/offline-tracker/ for documentation drift without network or GitHub access. Work only inside that directory and do not commit.",
+      "expected_output": "Reports that live issue/PR state for #42 and #99 could not be verified without tracker access and does not guess whether they are open or closed. Does not redesign or rewrite website/index.html because ROADMAP.md notes #99 defers website redesign; instead records the stale website claim ('live remote sync and cloud backup today') and #99 under Recommendations in the Drift report.",
+      "files": [
+        "evals/fixtures/offline-tracker/README.md",
+        "evals/fixtures/offline-tracker/ROADMAP.md",
+        "evals/fixtures/offline-tracker/website/index.html"
+      ]
+    }
+  ]
+}

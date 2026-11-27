@@ -41,6 +41,7 @@ To install somewhere else, use `./install.sh --target /path/to/skills` (repeatab
 - [tdd](skills/tdd/SKILL.md) — Build behavior through failing tests and small implementation steps.
 - [frontend-design](skills/frontend-design/SKILL.md) — Create distinctive, intentional visual design for web interfaces.
 - [code-review](skills/code-review/SKILL.md) — Review correctness, regressions, project standards, and spec fidelity.
+- [docs-drift](skills/docs-drift/SKILL.md) — Sweep repository docs against code, tests, CI, and issue state, and fix stale claims in place.
 - [bug-investigation](skills/bug-investigation/SKILL.md) — Reproduce a failure, test competing explanations, and verify a bounded fix.
 - [perf-investigation](skills/perf-investigation/SKILL.md) — Measure, profile, and fix performance problems against a baseline.
 - [dependency-upgrade](skills/dependency-upgrade/SKILL.md) — Upgrade dependencies or runtimes using cited changelogs and a test baseline.
